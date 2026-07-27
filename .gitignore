@@ -1,0 +1,43 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+*.egg
+
+# ---- Download temp / artifacts ----
+*.part
+*.part.meta.json
+*.meta.json
+*.flv.tmp
+*.m4s
+
+# ---- Build / dist ----
+dist/
+build/
+*.zip
+*.whl
+
+# ---- Local runtime data (cookies, history, settings) ----
+.bili_dl/
+gui_settings.json
+downloads/
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---- Editor / IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- Logs ----
+*.log

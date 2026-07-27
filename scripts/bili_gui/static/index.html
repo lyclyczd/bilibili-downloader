@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BiliDL · 哔哩哔哩下载器</title>
+<style>
+  :root{
+    --bg:#0f1117; --bg2:#171a23; --bg3:#1f2430; --card:#1b1f2a; --line:#2a3040;
+    --text:#e8ecf4; --muted:#9aa4b8; --brand:#fb7299; --brand2:#23ade5;
+    --ok:#36d399; --warn:#fbbd23; --err:#f87272; --accent:#7c5cff;
+    --radius:12px; --shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  [data-theme="light"]{
+    --bg:#f4f6fb; --bg2:#ffffff; --bg3:#eef1f7; --card:#ffffff; --line:#dfe4ee;
+    --text:#1b2030; --muted:#6b7589; --brand:#fb7299; --brand2:#23ade5;
+    --ok:#16a34a; --warn:#d97706; --err:#dc2626; --accent:#7c5cff;
+    --shadow:0 6px 24px rgba(20,30,60,.12);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,"Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;padding:8px 14px;
+    background:var(--bg3);color:var(--text);transition:.15s;font-size:13px}
+  button:hover{filter:brightness(1.12)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;font-weight:600}
+  button.ghost{background:transparent;border:1px solid var(--line)}
+  input,select,textarea{font-family:inherit;font-size:13px;padding:8px 10px;border-radius:8px;
+    border:1px solid var(--line);background:var(--bg2);color:var(--text);outline:none;width:100%}
+  input:focus,select:focus,textarea:focus{border-color:var(--brand2)}
+  label{color:var(--muted);font-size:12px;display:block;margin-bottom:4px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .wrap{max-width:1280px;margin:0 auto;padding:16px}
+  /* header */
+  header{display:flex;align-items:center;gap:14px;padding:14px 16px;
+    background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .logo{font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px}
+  .logo .dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand2))}
+  .spacer{flex:1}
+  .pill{font-size:12px;padding:5px 10px;border-radius:20px;background:var(--bg3);color:var(--muted);display:flex;align-items:center;gap:6px}
+  .pill .led{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .pill.on .led{background:var(--ok)} .pill.vip .led{background:var(--brand)}
+  .tabs{display:flex;gap:6px;margin:14px 0}
+  .tab{padding:8px 16px;border-radius:20px;background:var(--bg2);color:var(--muted);font-weight:600}
+  .tab.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+  .grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start}
+  @media(max-width:980px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;box-shadow:var(--shadow)}
+  .card h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h3 .ic{color:var(--brand)}
+  /* url bar */
+  .urlbar{display:flex;gap:10px;margin-bottom:12px}
+  .urlbar input{flex:1}
+  .preview{display:flex;gap:14px;margin-top:12px}
+  .preview img{width:160px;height:auto;border-radius:10px;background:var(--bg3);object-fit:cover;max-height:220px}
+  .preview .meta{flex:1;min-width:0}
+  .preview .title{font-size:16px;font-weight:700;margin:0 0 6px}
+  .preview .sub{color:var(--muted);font-size:12px}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--muted);margin-right:6px}
+  .badge.vip{background:rgba(251,114,153,.18);color:var(--brand)}
+  .pages{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:10px}
+  .page{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .page:last-child{border-bottom:none}
+  .page input{width:auto}
+  .page .pt{color:var(--muted);font-size:12px;min-width:42px}
+  /* options */
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .opts .full{grid-column:1/-1}
+  .checks{display:flex;gap:14px;flex-wrap:wrap}
+  .checks label{display:flex;align-items:center;gap:6px;color:var(--text);font-size:13px;margin:0}
+  .checks input{width:auto}
+  details summary{cursor:pointer;color:var(--brand2);font-size:13px;margin:10px 0 4px;user-select:none}
+  /* tasks */
+  .task{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+  .task .th{display:flex;align-items:center;gap:10px}
+  .task .tt{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tag{font-size:11px;padding:2px 8px;border-radius:20px}
+  .tag.queued{background:var(--bg3);color:var(--muted)}
+  .tag.running{background:rgba(35,173,229,.18);color:var(--brand2)}
+  .tag.done{background:rgba(54,211,153,.18);color:var(--ok)}
+  .tag.failed{background:rgba(248,114,114,.18);color:var(--err)}
+  .tag.canceled{background:var(--bg3);color:var(--muted)}
+  .bar{height:8px;border-radius:6px;background:var(--bg3);overflow:hidden;margin:8px 0 4px}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));width:0;transition:width .4s}
+  .bar>i.done{background:var(--ok)} .bar>i.failed{background:var(--err)}
+  .tin{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  .tactions{display:flex;gap:8px;margin-top:8px}
+  .tactions button{padding:5px 10px;font-size:12px}
+  .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:13px}
+  .list-item{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--line)}
+  .list-item:last-child{border-bottom:none}
+  .list-item .li-title{flex:1;min-width:0}
+  .list-item .li-sub{color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .qr{width:220px;height:220px;background:#fff;border-radius:10px;display:block;margin:0 auto}
+  .muted{color:var(--muted)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);
+    color:var(--text);padding:10px 18px;border-radius:10px;box-shadow:var(--shadow);border:1px solid var(--line);
+    opacity:0;transition:.25s;z-index:50;font-size:13px}
+  .toast.show{opacity:1}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border-radius:0;background:var(--bg2);flex:1}
+  .seg button.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
+  .hidden{display:none!important}
+  .small{font-size:12px}
+  a{color:var(--brand2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="dot"></span>BiliDL</div>
+  <div id="statusPill" class="pill"><span class="led"></span><span id="statusText">未登录（游客）</span></div>
+  <div class="spacer"></div>
+  <button class="ghost" onclick="switchTab('mylist')">我的列表</button>
+  <button class="ghost" onclick="switchTab('history')">历史</button>
+  <button class="ghost" onclick="switchTab('settings')">设置</button>
+  <button class="ghost" onclick="switchTab('login')">登录</button>
+  <button class="ghost" onclick="toggleTheme()" title="切换主题">🌓</button>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="download" onclick="switchTab('download')">下载</button>
+    <button class="tab" data-tab="mylist" onclick="switchTab('mylist')">我的列表</button>
+    <button class="tab" data-tab="history" onclick="switchTab('history')">历史记录</button>
+    <button class="tab" data-tab="settings" onclick="switchTab('settings')">设置</button>
+    <button class="tab" data-tab="login" onclick="switchTab('login')">登录</button>
+  </div>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <div id="tab-download" class="tabpane">
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h3><span class="ic">🔗</span>解析链接</h3>
+          <div class="urlbar">
+            <input id="url" placeholder="粘贴 BV号 / av号 / 视频·番剧·课程·直播链接 / fav:收藏夹ID / 直播间号" onkeydown="if(event.key==='Enter')resolve()">
+            <button class="primary" onclick="resolve()">解析</button>
+          </div>
+          <div class="row">
+            <label class="checks"><input type="checkbox" id="clipToggle" onchange="toggleClip(this.checked)"> 剪贴板自动监视</label>
+            <span id="clipState" class="small muted"></span>
+          </div>
+          <div id="previewBox"></div>
+        </div>
+
+        <div class="card" id="optCard" style="margin-top:16px">
+          <h3><span class="ic">⚙️</span>下载选项</h3>
+          <div class="opts">
+            <div>
+              <label>模式</label>
+              <div class="seg" id="modeSeg">
+                <button data-mode="full" class="active" onclick="setMode('full')">完整视频</button>
+                <button data-mode="audio" onclick="setMode('audio')">纯音频</button>
+                <button data-mode="video" onclick="setMode('video')">无声视频</button>
+              </div>
+            </div>
+            <div><label>画质</label><select id="optQuality"></select></div>
+            <div><label>音质</label><select id="optAudio"></select></div>
+            <div><label>帧率</label>
+              <select id="optFps"><option value="">不限</option><option value="30">30FPS</option><option value="60">60FPS</option></select>
+            </div>
+            <div><label>编码偏好</label>
+              <select id="optCodec"><option value="">默认</option><option value="h264">H.264</option><option value="hevc">H.265</option><option value="av1">AV1</option></select>
+            </div>
+            <div><label>输出格式</label>
+              <select id="optFormat"><option value="mp4">MP4</option><option value="mkv">MKV</option></select>
+            </div>
+            <div id="audioFmtBox" class="hidden"><label>音频格式</label>
+              <select id="optAudioFmt"><option value="m4a">M4A</option><option value="mp3">MP3</option><option value="webm">WebM</option><option value="flac">FLAC</option></select>
+            </div>
+            <div class="full"><label>弹幕</label>
+              <div class="checks">
+                <label><input type="checkbox" class="dm" value="xml" checked> XML</label>
+                <label><input type="checkbox" class="dm" value="ass" checked> ASS（本地播放器直看）</label>
+                <label><input type="checkbox" class="dm" value="protobuf"> Protobuf</label>
+              </div>
+            </div>
+            <div class="full"><label>字幕</label>
+              <div class="checks">
+                <label><input type="checkbox" class="sub" value="srt"> SRT</label>
+                <label><input type="checkbox" class="sub" value="txt"> TXT</label>
+                <label><input type="checkbox" class="sub" value="json"> JSON</label>
+              </div>
+            </div>
+            <div class="full"><div class="checks">
+              <label><input type="checkbox" id="optCover" checked> 封面</label>
+              <label><input type="checkbox" id="optLyrics"> 歌词</label>
+              <label><input type="checkbox" id="optTriple"> 下载后自动三连</label>
+              <label><input type="checkbox" id="optGpu"> 转码 GPU 加速</label>
+              <label><input type="checkbox" id="optNumbering" checked> 文件名加序号</label>
+              <label><input type="checkbox" id="optExtras"> 番剧正片+花絮</label>
+            </div></div>
+            <div><label>转码重编码</label>
+              <select id="optTranscode"><option value="">不转码</option><option value="h264">H.264</option><option value="hevc">H.265</option></select>
+            </div>
+            <div><label>下载线程数（≤8）</label>
+              <input type="number" id="optThreads" min="1" max="8" value="8">
+            </div>
+            <div class="full"><label>保存目录</label>
+              <input id="optOutput" placeholder="例如 D:/BiliDownloads">
+            </div>
+          </div>
+          <div style="margin-top:14px" class="row">
+            <button class="primary" id="dlBtn" onclick="startDownload()" disabled>开始下载</button>
+            <button class="ghost" onclick="selectAll(true)">全选</button>
+            <button class="ghost" onclick="selectAll(false)">全不选</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- tasks -->
+      <div>
+        <div class="card">
+          <h3><span class="ic">📥</span>任务队列
+            <span class="spacer" style="flex:1"></span>
+            <button class="ghost" style="padding:4px 10px;font-size:12px" onclick="clearTasks()">清空</button>
+          </h3>
+          <div id="tasks"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MYLIST ============ -->
+  <div id="tab-mylist" class="tabpane hidden">
+    <div class="card">
+      <h3><span class="ic">📚</span>我的列表（需登录）</h3>
+      <div class="row" style="margin-bottom:12px">
+        <div class="seg" id="mlSeg" style="max-width:360px">
+          <button data-kind="favs" class="active" onclick="setMlKind('favs')">收藏夹</button>
+          <button data-kind="bangumi" onclick="setMlKind('bangumi')">追番</button>
+          <button data-kind="cinema" onclick="setMlKind('cinema')">追剧</button>
+        </div>
+        <button class="ghost" onclick="loadMylist()">刷新</button>
+      </div>
+      <div id="mylistBox"><div class="empty">点击刷新加载</div></div>
+    </div>
+  </div>
+
+  <!-- ============ HISTORY ============ -->
+  <div id="tab-history" class="tabpane hidden">
+    <div class="card">
+      <h3><span class="ic">🕘</span>本地下载记录</h3>
+      <div id="historyBox"><div class="empty">暂无记录</div></div>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div id="tab-settings" class="tabpane hidden">
+    <div class="card">
+      <h3><span class="ic">🛠️</span>默认设置</h3>
+      <div class="opts">
+        <div class="full"><label>默认保存目录</label><input id="setOutput"></div>
+        <div><label>默认画质（留空=最高）</label><select id="setQuality"></select></div>
+        <div><label>默认音质（留空=最高）</label><select id="setAudio"></select></div>
+        <div><label>默认线程数</label><input type="number" id="setThreads" min="1" max="8"></div>
+        <div><label>默认并行任务数</label><input type="number" id="setWorkers" min="1" max="6"></div>
+        <div class="full"><div class="checks">
+          <label><input type="checkbox" id="setCover"> 默认下载封面</label>
+          <label><input type="checkbox" id="setNumbering"> 默认加序号</label>
+          <label><input type="checkbox" id="setGpu"> 默认 GPU 加速</label>
+        </div></div>
+      </div>
+      <div style="margin-top:14px" class="row">
+        <button class="primary" onclick="saveSettings()">保存设置</button>
+        <span id="setStatus" class="small muted"></span>
+      </div>
+      <hr style="border-color:var(--line);margin:18px 0">
+      <h3><span class="ic">🧰</span>环境</h3>
+      <div id="envBox" class="small muted"></div>
+    </div>
+  </div>
+
+  <!-- ============ LOGIN ============ -->
+  <div id="tab-login" class="tabpane hidden">
+    <div class="grid">
+      <div class="card">
+        <h3><span class="ic">📱</span>扫码登录</h3>
+        <div id="qrBox" style="text-align:center"><div class="empty">点击「获取二维码」</div></div>
+        <div class="row" style="margin-top:12px;justify-content:center">
+          <button class="primary" onclick="getQR()">获取二维码</button>
+        </div>
+        <p class="small muted" style="text-align:center" id="qrMsg"></p>
+      </div>
+      <div class="card">
+        <h3><span class="ic">🍪</span>Cookie 导入</h3>
+        <p class="small muted">从浏览器登录 bilibili.com 后，复制 Cookie 字符串（需含 SESSDATA）粘贴到此处。</p>
+        <textarea id="cookieStr" rows="5" placeholder="SESSDATA=xxx; bili_jct=yyy; DedeUserID=zzz"></textarea>
+        <div style="margin-top:10px"><button class="primary" onclick="importCookie()">导入并登录</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+let state = { plan:null, selected:new Set(), settings:{}, meta:{}, clipOn:false, mlKind:"favs", mode:"full" };
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
+async function api(path, method="GET", body){
+  const opt={method, headers:{}};
+  if(body!==undefined){ opt.headers["Content-Type"]="application/json"; opt.body=JSON.stringify(body); }
+  const r=await fetch(path, opt);
+  let data={}; try{ data=await r.json(); }catch(e){}
+  if(!r.ok) throw new Error(data.error||("HTTP "+r.status));
+  return data;
+}
+function fmtSize(n){ n=Number(n)||0; const u=["B","KB","MB","GB","TB"]; for(const x of u){ if(n<1024||x==="TB") return (x==="B"?Math.round(n)+"B":(n/1).toFixed(2)+x); n/=1024; } return (n).toFixed(2)+"TB"; }
+function fmtEta(s){ if(s==null||s<0||isNaN(s)) return "--:--"; s=Math.floor(s); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return h?`${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`:`${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`; }
+
+function switchTab(name){
+  $$(".tab").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  $$(".tabpane").forEach(p=>p.classList.add("hidden"));
+  $("#tab-"+name).classList.remove("hidden");
+  if(name==="mylist") loadMylist();
+  if(name==="history") loadHistory();
+  if(name==="settings") loadEnv();
+  if(name==="login") getQR();
+}
+function toggleTheme(){ const r=document.documentElement; r.dataset.theme = r.dataset.theme==="dark"?"light":"dark"; }
+
+// ---- status / meta / settings ----
+async function loadStatus(){ try{ const s=await api("/api/login/status"); const pill=$("#statusPill"); const txt=$("#statusText");
+  pill.className="pill"+(s.logged_in?" on":"")+(s.vip?" vip":"");
+  txt.textContent = s.logged_in ? (s.uname+" · "+(s.vip?"大会员":"登录")) : "未登录（游客）";
+}catch(e){} }
+async function loadMeta(){ state.meta=await api("/api/meta"); }
+async function loadSettings(){ state.settings=await api("/api/settings"); fillSettings(); fillOptionDefaults(); }
+function fillSettings(){
+  const s=state.settings;
+  $("#setOutput").value=s.output||"";
+  $("#setThreads").value=s.threads||8;
+  $("#setWorkers").value=s.workers||3;
+  $("#setCover").checked=!!s.cover;
+  $("#setNumbering").checked=!!s.numbering;
+  $("#setGpu").checked=!!s.gpu;
+}
+function fillOptionDefaults(){
+  const s=state.settings;
+  $("#optOutput").value=s.output||"";
+  $("#optThreads").value=s.threads||8;
+  $("#optCover").checked=!!s.cover;
+  $("#optNumbering").checked=!!s.numbering;
+  $("#optGpu").checked=!!s.gpu;
+}
+async function loadEnv(){ try{ const e=await api("/api/status"); const gpu=e.gpu||{};
+  $("#envBox").innerHTML=`ffmpeg: <b>${e.ffmpeg?"已检测到":"未检测到"}</b> (${e.ffmpeg_path})<br>GPU 编码器: H.264=<b>${gpu.h264}</b> · H.265=<b>${gpu.hevc}</b><br>默认下载目录: ${e.output_default}`;
+}catch(e){ $("#envBox").textContent="加载失败: "+e.message; } }
+
+// ---- quality/audio selects ----
+function fillQualitySelect(sel, list, allowAuto){
+  sel.innerHTML="";
+  if(allowAuto){ const o=document.createElement("option"); o.value=""; o.textContent="自动（最高可用）"; sel.appendChild(o); }
+  list.forEach(q=>{ const o=document.createElement("option"); o.value=q.qn; o.textContent=`${q.label}${q.need_vip?" (大会员)":""}`; sel.appendChild(o); });
+}
+function fillAudioSelect(sel, list, allowAuto){
+  sel.innerHTML="";
+  if(allowAuto){ const o=document.createElement("option"); o.value=""; o.textContent="自动（最高可用）"; sel.appendChild(o); }
+  list.forEach(a=>{ const o=document.createElement("option"); o.value=a.id; o.textContent=a.label; sel.appendChild(o); });
+}
+
+// ---- resolve ----
+async function resolve(){
+  const url=$("#url").value.trim();
+  if(!url){ toast("请输入链接"); return; }
+  $("#previewBox").innerHTML='<div class="empty">解析中…</div>';
+  $("#dlBtn").disabled=true;
+  try{
+    const plan=await api("/api/resolve","POST",{url});
+    state.plan=plan; state.selected=new Set();
+    if(plan.kind==="live"){ renderLive(plan); return; }
+    renderPlan(plan);
+  }catch(e){ $("#previewBox").innerHTML=`<div class="empty">解析失败：${e.message}</div>`; }
+}
+function renderPlan(plan){
+  const jobs=plan.jobs||[];
+  jobs.forEach(j=>state.selected.add(j.index));
+  const cover = plan.cover?`<img src="${plan.cover.startsWith("//")?"https:":""}${plan.cover}" onerror="this.style.display='none'">`:"<div style='width:160px'></div>";
+  let pagesHtml="";
+  if(jobs.length>1){
+    pagesHtml=`<div class="pages">${jobs.map(j=>`<div class="page"><input type="checkbox" checked data-idx="${j.index}" onchange="onPageCheck(this)"><span class="pt">#${j.index}</span><span>${escapeHtml(j.title)}</span></div>`).join("")}</div>`;
+  }
+  $("#previewBox").innerHTML=`
+    <div class="preview">
+      ${cover}
+      <div class="meta">
+        <p class="title">${escapeHtml(plan.title)}</p>
+        <div><span class="badge">${plan.kind}</span><span class="badge">${jobs.length} 个可下载项</span></div>
+        <p class="sub">可选画质 ${plan.qualities.length} 档，音质 ${plan.audios.length} 档</p>
+      </div>
+    </div>${pagesHtml}`;
+  // fill quality/audio selects from plan, fallback meta
+  const qlist = plan.qualities.length?plan.qualities:state.meta.qualities.map(q=>({qn:q.qn,label:q.label,need_vip:false}));
+  const alist = plan.audios.length?plan.audios:state.meta.audios.map(a=>({id:a.id,label:a.label}));
+  fillQualitySelect($("#optQuality"), qlist, true);
+  fillAudioSelect($("#optAudio"), alist, true);
+  $("#dlBtn").disabled=false;
+}
+function renderLive(plan){
+  $("#previewBox").innerHTML=`
+    <div class="preview"><div class="meta">
+      <p class="title">${escapeHtml(plan.title||"直播间")}</p>
+      <div><span class="badge">直播</span><span class="badge">${plan.live_status}</span></div>
+      <p class="sub">人气: ${plan.online||"-"}</p>
+      <button class="primary" onclick="startRecord()">开始录制</button>
+    </div></div>`;
+}
+function onPageCheck(el){ const i=Number(el.dataset.idx); if(el.checked) state.selected.add(i); else state.selected.delete(i); }
+function selectAll(v){ $$(".page input").forEach(c=>{ c.checked=v; const i=Number(c.dataset.idx); if(v) state.selected.add(i); else state.selected.delete(i); }); }
+function setMode(m){ state.mode=m; $$("#modeSeg button").forEach(b=>b.classList.toggle("active", b.dataset.mode===m));
+  $("#audioFmtBox").classList.toggle("hidden", m!=="audio"); }
+
+// ---- download ----
+function collectOptions(){
+  const dm=$$(".dm").filter(c=>c.checked).map(c=>c.value);
+  const sub=$$(".sub").filter(c=>c.checked).map(c=>c.value);
+  return {
+    mode: state.mode,
+    quality: $("#optQuality").value?Number($("#optQuality").value):"",
+    audio: $("#optAudio").value?Number($("#optAudio").value):"",
+    fps: $("#optFps").value||"", codec: $("#optCodec").value||"",
+    format: $("#optFormat").value, audio_fmt: $("#optAudioFmt").value,
+    danmaku: dm, subtitle: sub, cover: $("#optCover").checked,
+    lyrics: $("#optLyrics").checked, auto_triple: $("#optTriple").checked,
+    gpu: $("#optGpu").checked, transcode: $("#optTranscode").value||"",
+    threads: Math.min(8, Math.max(1, Number($("#optThreads").value)||8)),
+    numbering: $("#optNumbering").checked, with_extras: $("#optExtras").checked,
+    output: $("#optOutput").value.trim()||state.settings.output||"./downloads",
+  };
+}
+async function startDownload(){
+  if(!state.plan||state.plan.kind==="live"){ toast("请先解析视频/番剧/课程链接"); return; }
+  const opts=collectOptions();
+  try{
+    const r=await api("/api/submit","POST",{plan_id:state.plan.plan_id, indices:Array.from(state.selected), options:opts});
+    toast(`已加入队列：${r.queued} 个任务`);
+    pollTasks();
+  }catch(e){ toast("提交失败："+e.message); }
+}
+async function startRecord(){
+  const room=$("#url").value.trim().match(/(\d+)/);
+  if(!room){ toast("直播间号无效"); return; }
+  try{ await api("/api/record","POST",{room_id:room[1], quality:"原画"}); toast("开始录制"); pollTasks(); }
+  catch(e){ toast("录制失败："+e.message); }
+}
+
+// ---- tasks ----
+let polling=false;
+async function pollTasks(){
+  try{
+    const d=await api("/api/tasks");
+    renderTasks(d.tasks||[]);
+  }catch(e){}
+}
+function renderTasks(tasks){
+  const box=$("#tasks");
+  if(!tasks.length){ box.innerHTML='<div class="empty">暂无任务，解析链接后点击「开始下载」</div>'; return; }
+  box.innerHTML=tasks.map(t=>{
+    const cls=t.status;
+    const barCls = t.status==="done"?"done":(t.status==="failed"?"failed":"");
+    const pct=t.progress||0;
+    const actions=[];
+    if(t.status==="queued"||t.status==="running") actions.push(`<button onclick="cancelTask('${t.id}')">取消</button>`);
+    if(t.status==="failed") actions.push(`<button onclick="retryTask('${t.id}')">重试</button>`);
+    if(t.result_path) actions.push(`<button onclick="openTask('${encodeURIComponent(t.result_path)}')">打开</button>`);
+    return `<div class="task">
+      <div class="th"><span class="tt" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span><span class="tag ${cls}">${statusText(t.status)}</span></div>
+      <div class="bar"><i class="${barCls}" style="width:${pct}%"></i></div>
+      <div class="tin"><span>${escapeHtml(t.phase||"")}</span><span>${pct.toFixed(1)}% · ${fmtSize(t.speed)}/s · ETA ${fmtEta(t.eta)}</span></div>
+      ${t.error?`<div class="tin" style="color:var(--err)">${escapeHtml(t.error)}</div>`:""}
+      <div class="tactions">${actions.join("")}</div>
+    </div>`;
+  }).join("");
+}
+function statusText(s){ return {queued:"排队中",running:"下载中",done:"完成",failed:"失败",canceled:"已取消"}[s]||s; }
+async function cancelTask(id){ await api("/api/task/cancel","POST",{id}); pollTasks(); }
+async function retryTask(id){ const d=await api("/api/task/retry","POST",{id}); if(d.id) toast("已重试"); pollTasks(); }
+async function openTask(p){ await api("/api/task/open","POST",{path:decodeURIComponent(p)}); }
+async function clearTasks(){ await api("/api/tasks/clear","POST",{}); pollTasks(); }
+
+// ---- clipboard ----
+async function toggleClip(on){
+  try{ const d=await api("/api/clipboard","POST",{action:on?"start":"stop"}); state.clipOn=d.on;
+    $("#clipState").textContent = d.on?"监视中…复制 B 站链接自动下载":"";
+  }catch(e){ toast("剪贴板："+e.message); }
+}
+async function loadClipState(){ try{ const d=await api("/api/clipboard/state"); state.clipOn=d.on; $("#clipToggle").checked=d.on; $("#clipState").textContent=d.on?"监视中…":"";
+  }catch(e){} }
+
+// ---- mylist ----
+function setMlKind(k){ state.mlKind=k; $$("#mlSeg button").forEach(b=>b.classList.toggle("active", b.dataset.kind===k)); loadMylist(); }
+async function loadMylist(){
+  try{
+    const d=await api("/api/mylist?kind="+state.mlKind);
+    const items=d.items||[];
+    if(!items.length){ $("#mylistBox").innerHTML=`<div class="empty">${state.mlKind==="favs"?"未登录或无收藏夹":"未登录或无记录"}</div>`; return; }
+    $("#mylistBox").innerHTML=items.map(it=>{
+      const ref = state.mlKind==="favs"?`fav:${it.id}`:`ss${it.id}`;
+      return `<div class="list-item"><div class="li-title">${escapeHtml(it.title)}<div class="li-sub">${it.count?it.count+" 个内容":""}${it.index?(" · "+it.index):""}</div></div>
+        <button class="primary" onclick="useRef('${ref}')">下载</button></div>`;
+    }).join("");
+  }catch(e){ $("#mylistBox").innerHTML=`<div class="empty">加载失败：${escapeHtml(e.message)}</div>`; }
+}
+function useRef(ref){ $("#url").value=ref; switchTab("download"); resolve(); }
+
+// ---- history ----
+async function loadHistory(){
+  try{ const d=await api("/api/history?limit=100"); const items=d.items||[];
+    if(!items.length){ $("#historyBox").innerHTML='<div class="empty">暂无记录</div>'; return; }
+    $("#historyBox").innerHTML=`<table><tr><th>时间</th><th>类型</th><th>标题</th><th>路径</th><th></th></tr>${
+      items.map(h=>`<tr><td>${h.time||""}</td><td>${h.type||""}</td><td>${escapeHtml(h.title||"")}</td><td class="muted">${escapeHtml((h.path||"").split("/").pop())}</td><td><button onclick="openTask('${encodeURIComponent(h.path||"")}')">打开</button></td></tr>`).join("")
+    }</table>`;
+  }catch(e){ $("#historyBox").innerHTML=`<div class="empty">加载失败：${e.message}</div>`; }
+}
+
+// ---- settings ----
+async function saveSettings(){
+  const patch={
+    output:$("#setOutput").value.trim(), threads:Number($("#setThreads").value)||8,
+    workers:Number($("#setWorkers").value)||3, cover:$("#setCover").checked,
+    numbering:$("#setNumbering").checked, gpu:$("#setGpu").checked,
+  };
+  try{ await api("/api/settings/save","POST",patch); state.settings=await api("/api/settings");
+    fillOptionDefaults(); $("#setStatus").textContent="已保存 ✓"; setTimeout(()=>$("#setStatus").textContent="",2000);
+  }catch(e){ $("#setStatus").textContent="保存失败："+e.message; }
+}
+
+// ---- login ----
+async function getQR(){ try{ const d=await api("/api/login/qr","POST"); $("#qrBox").innerHTML=`<img class="qr" src="data:image/png;base64,${d.qr}">`; $("#qrMsg").textContent="请使用哔哩哔哩 App 扫码…"; pollLogin(); }catch(e){ $("#qrMsg").textContent="获取失败："+e.message; } }
+async function pollLogin(){
+  const d=await api("/api/login/status"); $("#qrMsg").textContent=d.qr_msg||"";
+  if(d.qr_status==="success"){ await loadStatus(); $("#qrMsg").textContent="✅ 登录成功！"; }
+  else if(d.qr_status==="waiting"||d.qr_status==="scanned"){ setTimeout(pollLogin, 2000); }
+  else if(d.qr_status==="expired"||d.qr_status==="timeout"){ /* stop */ }
+}
+async function importCookie(){ const c=$("#cookieStr").value.trim(); if(!c){ toast("请输入 Cookie"); return; }
+  try{ const d=await api("/api/login/cookie","POST",{cookie:c}); await loadStatus(); toast(d.logged_in?("登录成功："+d.uname):"Cookie 无效"); }catch(e){ toast("导入失败："+e.message); } }
+
+// ---- utils ----
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+// ---- init ----
+(async function(){
+  await loadMeta().catch(()=>{});
+  await loadSettings().catch(()=>{});
+  await loadStatus().catch(()=>{});
+  await loadClipState().catch(()=>{});
+  setInterval(pollTasks, 1500);
+  pollTasks();
+})();
+</script>
+</body>
+</html>
