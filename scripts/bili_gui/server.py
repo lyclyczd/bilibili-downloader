@@ -153,6 +153,20 @@ class Handler(BaseHTTPRequestHandler):
             if act == "remove":
                 return {"ok": CORE.remove_account(body.get("name"))}
             return CORE.list_accounts()
+        if path == "/api/subs":
+            return CORE.sub_list()
+        if path == "/api/subs/add":
+            return CORE.sub_add(
+                body.get("target", ""),
+                auto_download=bool(body.get("auto_download", True)),
+                download_existing=bool(body.get("download_existing", False)))
+        if path == "/api/subs/remove":
+            return {"ok": CORE.sub_remove(body.get("id"))}
+        if path == "/api/subs/toggle":
+            return CORE.sub_toggle(body.get("id"),
+                                   body.get("field", "enabled"))
+        if path == "/api/subs/check":
+            return CORE.sub_check(body.get("id") or None)
         if path == "/api/settings/export":
             return CORE.export_settings()
         if path == "/api/settings/import":

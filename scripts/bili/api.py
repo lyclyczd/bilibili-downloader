@@ -201,6 +201,44 @@ def iter_space_videos(session, mid, limit=0):
         time.sleep(0.6)
 
 
+def get_season_archives(session, mid, season_id, pn=1, ps=30, sort_reverse=False):
+    """UP 主空间「合集」视频列表（订阅追更用）。
+
+    返回: {aids, archives:[{bvid,title,pubdate,...}], meta:{name,total,...}, page}
+    """
+    params = {"mid": mid, "season_id": season_id, "page_num": pn,
+              "page_size": ps,
+              "sort_reverse": "true" if sort_reverse else "false"}
+    return _get(session,
+                f"{API}/x/polymer/web-space/seasons_archives_list", params)
+
+
+def iter_season_archives(session, mid, season_id, limit=0):
+    """遍历合集全部视频（自动翻页）。"""
+    pn, got = 1, 0
+    while True:
+        data = get_season_archives(session, mid, season_id, pn=pn)
+        archives = data.get("archives") or []
+        if not archives:
+            break
+        for v in archives:
+            yield v
+            got += 1
+            if limit and got >= limit:
+                return
+        total = (data.get("page") or {}).get("total", 0)
+        if pn * 30 >= total:
+            break
+        pn += 1
+        time.sleep(0.6)
+
+
+def get_user_card(session, mid):
+    """用户名片（获取 UP 主昵称等）。"""
+    return _get(session, f"{API}/x/web-interface/card",
+                {"mid": mid, "photo": "false"})
+
+
 def get_fav_list(session, media_id, pn=1, ps=20):
     params = {"media_id": media_id, "pn": pn, "ps": ps, "platform": "web"}
     return _get(session, f"{API}/x/v3/fav/resource/list", params)

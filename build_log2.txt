@@ -1,0 +1,17 @@
+210 INFO: PyInstaller: 6.21.0, contrib hooks: 2026.6
+210 INFO: Python: 3.13.14
+248 INFO: Platform: Windows-11-10.0.26200-SP0
+248 INFO: Python environment: C:\Users\赖彦呈\.workbuddy\binaries\python\envs\default
+249 INFO: wrote C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\BilibiliDownloader.spec
+13205 WARNING: Hidden import "pycparser.lextab" not found!
+13206 WARNING: Hidden import "pycparser.yacctab" not found!
+icon: C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\assets\icon.ico
+=== PyInstaller ===
+C:\Users\赖彦呈\.workbuddy\binaries\python\envs\default\Scripts\python.exe -m PyInstaller C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\scripts\bili_gui_app.py --name BilibiliDownloader --paths C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\scripts --onedir --noconsole --icon C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\assets\icon.ico --clean --distpath C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\build\exe --workpath C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\build\work --log-level WARN --add-data C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\scripts\bili_gui\static\index.html;bili_gui\static --add-data C:\Users\赖彦呈\.workbuddy\binaries\python\envs\default\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe;ffmpeg\ffmpeg.exe --add-data C:\Users\赖彦呈\.workbuddy\binaries\python\envs\default\Lib\site-packages\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe;. --add-data C:\Users\赖彦呈\.workbuddy\binaries\python\envs\default\Lib\site-packages\webview\js;webview\js --hidden-import webview --hidden-import webview.platforms.win32 --hidden-import webview.platforms.edgechromium --hidden-import webview.platforms.mshtml --hidden-import webview.platforms.winforms --hidden-import pythonnet --hidden-import clr --hidden-import imageio_ffmpeg --hidden-import bili --hidden-import bili_gui --hidden-import bili_gui.core --hidden-import bili_gui.server --hidden-import requests --hidden-import qrcode --hidden-import PIL
+
+=== build output ===
+exe: C:\Users\赖彦呈\WorkBuddy\skill\bilibili-downloader\build\exe\BilibiliDownloader\BilibiliDownloader.exe
+ffmpeg bundled: True
+webview js bundled: True
+index.html bundled: True
+OK

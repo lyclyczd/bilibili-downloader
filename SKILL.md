@@ -69,6 +69,11 @@ GUI 提供的能力（覆盖全部七大需求）：
 | ⑭ | 一键启动网页脚本 | `launch_web.bat` / `launch_web.sh` |
 | ⑮ | 两种分发模式 | 本地 exe 安装包 / Python+网页 |
 | ⑯ | 开源上传 GitHub | 仓库 `lyclyczd/bilibili-downloader` |
+| ⑰ | 订阅追更（v1.3.0） | 订阅 UP 主投稿或合集，后台每 N 分钟检查更新并自动下载新视频 |
+
+## 订阅追更（⑰，v1.3.0）
+
+GUI「订阅」页粘贴 UP 主空间链接 / UID（订阅全部投稿）或合集链接（`.../lists/{sid}?type=season`）即可追更；默认只追新视频，可勾选同时下载存量。后台按 `sub_interval_min`（默认 30 分钟）自动检查，新视频自动入队 + 系统通知。数据存 `~/.bili_dl/subscriptions.json`。API：`/api/subs`、`/api/subs/add`、`/api/subs/remove`、`/api/subs/toggle`、`/api/subs/check`。
 
 ## 两种使用模式（⑮）
 

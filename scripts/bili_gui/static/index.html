@@ -141,6 +141,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="download" onclick="switchTab('download')">下载</button>
     <button class="tab" data-tab="mylist" onclick="switchTab('mylist')">我的列表</button>
+    <button class="tab" data-tab="subs" onclick="switchTab('subs')">订阅</button>
     <button class="tab" data-tab="process" onclick="switchTab('process')">后期加工</button>
     <button class="tab" data-tab="logs" onclick="switchTab('logs')">运行日志</button>
     <button class="tab" data-tab="history" onclick="switchTab('history')">历史</button>
@@ -272,6 +273,36 @@
     </div>
   </div>
 
+  <!-- ========= SUBS (订阅追更) ========= -->
+  <div id="tab-subs" class="tabpane hidden">
+    <div class="card">
+      <h3><span class="ic">🔔</span>新增订阅（合集追更 / UP 主投稿）</h3>
+      <div class="row" style="margin-bottom:10px">
+        <input id="subTarget" style="flex:1;min-width:320px"
+               placeholder="粘贴 UP 主空间链接 / UID（订阅全部投稿），或合集链接（订阅该合集追更）">
+        <button class="primary" onclick="subAdd()">➕ 订阅</button>
+      </div>
+      <div class="checks" style="margin-bottom:6px">
+        <label><input type="checkbox" id="subAuto" checked> 发现更新自动下载</label>
+        <label><input type="checkbox" id="subExisting"> 同时下载现有全部视频（存量）</label>
+      </div>
+      <div class="small muted">
+        示例：<code>https://space.bilibili.com/946974</code>（UP 主投稿）·
+        <code>https://space.bilibili.com/946974/lists/1234?type=season</code>（合集）。
+        后台每 <span id="subIntervalShow">30</span> 分钟自动检查一次，可在「设置」中调整。
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3><span class="ic">📡</span>我的订阅
+        <span class="spacer" style="flex:1"></span>
+        <button class="ghost" style="padding:4px 10px;font-size:12px" onclick="subCheck()">立即检查全部</button>
+        <button class="ghost" style="padding:4px 10px;font-size:12px" onclick="loadSubs()">刷新</button>
+      </h3>
+      <div id="subsBox"><div class="empty">暂无订阅</div></div>
+    </div>
+  </div>
+
   <!-- ========= PROCESS ========= -->
   <div id="tab-process" class="tabpane hidden">
     <div class="grid">
@@ -345,6 +376,7 @@
         <div><label>默认并行任务数</label><input type="number" id="setWorkers" min="1" max="6"></div>
         <div><label>限速（KB/s，0=不限）</label><input type="number" id="setRate" min="0" value="0"></div>
         <div><label>代理地址</label><input id="setProxy" placeholder="http://127.0.0.1:7890 或 socks5://..."></div>
+        <div><label>订阅检查间隔（分钟）</label><input type="number" id="setSubInterval" min="5" value="30"></div>
         <div class="full"><div class="checks">
           <label><input type="checkbox" id="setCover"> 默认下载封面</label>
           <label><input type="checkbox" id="setNumbering"> 默认加序号</label>
@@ -447,6 +479,7 @@ function switchTab(name){
   $$(".tabpane").forEach(p=>p.classList.add("hidden"));
   $("#tab-"+name).classList.remove("hidden");
   if(name==="mylist") loadMylist();
+  if(name==="subs") loadSubs();
   if(name==="history") loadHistory();
   if(name==="settings") loadEnv();
   if(name==="login") { getQR(); loadAccounts(); }
@@ -474,6 +507,7 @@ function fillSettings(){
   $("#setNotify").checked=!!s.notify;
   $("#setOpen").checked=!!s.open_folder;
   $("#setLowSpeed").checked=!!s.low_speed_mode;
+  $("#setSubInterval").value=s.sub_interval_min||30;
 }
 function fillOptionDefaults(){
   const s=state.settings;
@@ -714,6 +748,71 @@ async function loadHistory(){
   }catch(e){ $("#historyBox").innerHTML=`<div class="empty">加载失败：${e.message}</div>`; }
 }
 
+// ---- 订阅（合集追更 / UP 主投稿） ----
+function subTimeAgo(ts){
+  if(!ts) return "从未";
+  const d=Math.floor(Date.now()/1000-ts);
+  if(d<60) return "刚刚";
+  if(d<3600) return Math.floor(d/60)+" 分钟前";
+  if(d<86400) return Math.floor(d/3600)+" 小时前";
+  return Math.floor(d/86400)+" 天前";
+}
+async function loadSubs(){
+  try{
+    const r=await api("/api/subs");
+    $("#subIntervalShow").textContent=r.interval_min||30;
+    const subs=r.subs||[];
+    if(!subs.length){ $("#subsBox").innerHTML='<div class="empty">暂无订阅，粘贴 UP 主空间链接或合集链接开始追更</div>'; return; }
+    $("#subsBox").innerHTML=subs.map(s=>{
+      const type=s.type==="season"?"📁 合集":"👤 UP 主";
+      const st=s.enabled?"":"opacity:.5;";
+      return `<div class="list-item" style="${st}">
+        <div class="li-title">${escapeHtml(s.name||s.mid)}
+          <div class="li-sub">${type} · 已收录 ${s.seen_count||0} 个视频 · 上次检查：${subTimeAgo(s.last_check)}${s.last_new?` · <b style="color:var(--ok,#4caf50)">新增 ${s.last_new}</b>`:""}${s.latest_title?`<br>最新：${escapeHtml(s.latest_title)}`:""}</div>
+        </div>
+        <label class="small" title="发现更新自动下载"><input type="checkbox" ${s.auto_download?"checked":""} onchange="subToggle('${s.id}','auto_download')"> 自动下载</label>
+        <button class="ghost" onclick="subCheck('${s.id}')">检查更新</button>
+        <button class="ghost" onclick="subToggle('${s.id}','enabled')">${s.enabled?"暂停":"启用"}</button>
+        <button class="ghost" onclick="subRemove('${s.id}')" style="color:var(--err)">删除</button>
+      </div>`;
+    }).join("");
+  }catch(e){ $("#subsBox").innerHTML=`<div class="empty">加载失败：${escapeHtml(e.message)}</div>`; }
+}
+async function subAdd(){
+  const target=$("#subTarget").value.trim();
+  if(!target){ toast("请输入 UP 主空间链接 / UID 或合集链接"); return; }
+  toast("正在校验订阅目标…");
+  try{
+    const r=await api("/api/subs/add","POST",{
+      target, auto_download:$("#subAuto").checked,
+      download_existing:$("#subExisting").checked });
+    $("#subTarget").value="";
+    toast(`已订阅：${r.sub.name}`+(r.downloading?`，${r.downloading} 个任务已入队`:""));
+    loadSubs();
+  }catch(e){ toast("订阅失败："+e.message); }
+}
+async function subRemove(id){
+  if(!confirm("确定删除该订阅？（不会删除已下载文件）")) return;
+  try{ await api("/api/subs/remove","POST",{id}); loadSubs(); toast("已删除订阅"); }
+  catch(e){ toast("删除失败："+e.message); }
+}
+async function subToggle(id, field){
+  try{ await api("/api/subs/toggle","POST",{id, field}); loadSubs(); }
+  catch(e){ toast("操作失败："+e.message); }
+}
+async function subCheck(id){
+  toast("正在检查订阅更新…");
+  try{
+    const r=await api("/api/subs/check","POST", id?{id}:{});
+    if(r.busy){ toast("后台正在检查中，请稍候"); return; }
+    const total=(r.results||[]).reduce((a,x)=>a+(x.new||0),0);
+    const errs=(r.results||[]).filter(x=>x.error);
+    if(errs.length) toast(`检查完成：${total} 个新视频；${errs.length} 个订阅出错`);
+    else toast(total?`发现 ${total} 个新视频${(r.results||[]).some(x=>x.downloading)?"，已开始下载":""}`:"没有新视频");
+    loadSubs();
+  }catch(e){ toast("检查失败："+e.message); }
+}
+
 // ---- settings ----
 async function saveSettings(){
   const patch={
@@ -723,6 +822,7 @@ async function saveSettings(){
     numbering:$("#setNumbering").checked, gpu:$("#setGpu").checked,
     notify:$("#setNotify").checked, open_folder:$("#setOpen").checked,
     low_speed_mode:$("#setLowSpeed").checked,
+    sub_interval_min:Number($("#setSubInterval").value)||30,
   };
   try{ await api("/api/settings/save","POST",patch); state.settings=await api("/api/settings");
     fillOptionDefaults(); $("#setStatus").textContent="已保存 ✓"; setTimeout(()=>$("#setStatus").textContent="",2000);

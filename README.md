@@ -165,6 +165,19 @@ python scripts/bili_gui.py
 | ⑮ | 两种分发模式 | 本地 exe 安装包 / Python + 网页，见上 |
 | ⑯ | 开源上传 GitHub | 仓库 `lyclyczd/bilibili-downloader` |
 
+## 🔔 订阅追更（v1.3.0 新增）
+
+在 GUI「订阅」页可以订阅 **UP 主全部投稿** 或 **某个视频合集**，后台定期检查更新，发现新视频自动加入下载队列（可关闭自动下载，仅提醒）。
+
+- **订阅 UP 主**：粘贴空间链接 `https://space.bilibili.com/946974` 或直接输入 UID
+- **订阅合集**：粘贴合集链接 `https://space.bilibili.com/{mid}/lists/{sid}?type=season`（旧版 `channel/collectiondetail?sid=` 也支持）
+- **存量控制**：默认只追新视频；勾选「同时下载现有全部视频」可把合集/投稿存量一并入队
+- **检查周期**：默认每 30 分钟自动检查一次（设置页可改，最低 5 分钟），也可以点「立即检查」
+- **更新提醒**：发现新视频会触发系统通知（①），标题显示在订阅列表中
+- 订阅数据保存在 `~/.bili_dl/subscriptions.json`
+
+对应 API：`/api/subs`（列表）、`/api/subs/add`、`/api/subs/remove`、`/api/subs/toggle`、`/api/subs/check`。
+
 ### 浏览器扩展（⑦）
 
 见 `extension/README.md`：开发者模式加载 `extension/` 目录，打开哔哩哔哩页面 → 点扩展图标 → “捕获当前页面并下载”。

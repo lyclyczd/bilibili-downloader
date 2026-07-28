@@ -15,7 +15,7 @@ LOG_FILE = os.path.join(LOG_DIR, "gui.log")
 VERSION_FILE = os.path.join(APP_DIR, "VERSION")
 
 # 软件版本（用于自动更新检查）。推送 GitHub 后请同步此处与 Release 的 tag。
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",

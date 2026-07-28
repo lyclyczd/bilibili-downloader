@@ -26,6 +26,7 @@ from bili.utils import (sanitize_filename, format_size, add_history, load_json,
                         risk_interval, LOG_FILE, VERSION)  # noqa
 import bili_dl  # noqa
 from bili.clipboard_watch import read_clipboard, BILI_PATTERN  # noqa
+from bili_gui import subscription  # noqa
 
 # ---------- 统一日志（⑩）：Web 模式与 EXE 模式都写入 LOG_FILE ----------
 import logging  # noqa
@@ -145,6 +146,8 @@ class GuiCore:
         self._clip = {"on": False, "thread": None}
         self._qr = {"status": "none", "msg": "", "key": None, "session": None}
         self._controls = {}  # task_id -> DownloadControl
+        self._sub_checking = False
+        self._start_sub_watcher()  # 订阅后台检查线程
 
     # ---------- settings ----------
     def _load_settings(self):
@@ -175,6 +178,7 @@ class GuiCore:
             "low_speed_mode": True,   # ⑫ 风控：默认低速+随机间隔
             "disclaimer_accepted": False,  # ⑬ 免责声明
             "launch_browser": True,
+            "sub_interval_min": 30,   # 订阅检查间隔（分钟）
         }
         s = load_json(os.path.join(APP_DIR, "gui_settings.json"), {}) or {}
         defaults.update(s)
@@ -699,6 +703,128 @@ class GuiCore:
     # ---------- extension push (⑦) ----------
     def push_url(self, url):
         return self.quick_download(url)
+
+    # ---------- 订阅（合集追更 / UP 主投稿） ----------
+    def sub_list(self):
+        subs = subscription.list_subs()
+        subs.sort(key=lambda s: s.get("added_at") or 0, reverse=True)
+        return {"subs": subs,
+                "interval_min": int(self.settings.get("sub_interval_min")
+                                    or 30)}
+
+    def sub_add(self, target, auto_download=True, download_existing=False):
+        """添加订阅。target 支持 UP 主空间链接 / UID / 合集链接。
+
+        download_existing=False（默认）：存量视频只标记为已见，仅追新。
+        download_existing=True：把当前已有视频也全部加入下载队列。
+        """
+        type_, mid, season_id = subscription.parse_target(target)
+        sub = subscription.add_sub(type_, mid, season_id,
+                                   auto_download=auto_download)
+        try:
+            new = subscription.check_sub(self.session, sub,
+                                         mark_only=not download_existing)
+        except Exception as e:
+            subscription.remove_sub(sub["id"])
+            raise ValueError(f"订阅校验失败（目标不存在或网络异常）: {e}")
+        started = []
+        if download_existing and new and sub.get("auto_download"):
+            started = self._sub_enqueue(sub, new)
+        s = subscription.get_sub(sub["id"]) or sub
+        LOGGER.info("新增订阅: %s (%s)", s.get("name"), s.get("type"))
+        return {"sub": dict(s, seen=None,
+                            seen_count=len(s.get("seen") or [])),
+                "downloading": len(started)}
+
+    def sub_remove(self, sub_id):
+        ok = subscription.remove_sub(sub_id)
+        if ok:
+            LOGGER.info("移除订阅: %s", sub_id)
+        return ok
+
+    def sub_toggle(self, sub_id, field="enabled"):
+        if field not in ("enabled", "auto_download"):
+            raise ValueError("field 只能是 enabled / auto_download")
+        s = subscription.get_sub(sub_id)
+        if not s:
+            raise ValueError("订阅不存在")
+        s2 = subscription.update_sub(sub_id, **{field: not s.get(field)})
+        return {"sub": dict(s2, seen=None,
+                            seen_count=len(s2.get("seen") or []))}
+
+    def sub_check(self, sub_id=None):
+        """立即检查订阅更新（单个或全部），新视频自动入队下载。"""
+        if self._sub_checking:
+            return {"busy": True, "results": []}
+        self._sub_checking = True
+        try:
+            subs = subscription.list_subs()
+            if sub_id:
+                subs = [s for s in subs if s.get("id") == sub_id]
+            results = []
+            for meta in subs:
+                if not sub_id and not meta.get("enabled"):
+                    continue
+                s = subscription.get_sub(meta["id"])
+                if not s:
+                    continue
+                try:
+                    new = subscription.check_sub(self.session, s)
+                    started = []
+                    if new and s.get("auto_download"):
+                        started = self._sub_enqueue(s, new)
+                    if new:
+                        LOGGER.info("订阅[%s] 发现 %d 个新视频，已入队 %d",
+                                    s.get("name"), len(new), len(started))
+                        self.notify(
+                            "订阅更新",
+                            f"{s.get('name')}: {len(new)} 个新视频" +
+                            ("，已开始下载" if started else ""))
+                    results.append({"id": s["id"], "name": s.get("name"),
+                                    "new": len(new),
+                                    "titles": [i["title"] for i in new[:5]],
+                                    "downloading": len(started)})
+                except Exception as e:  # noqa
+                    LOGGER.warning("订阅[%s] 检查失败: %s",
+                                   s.get("name"), e)
+                    results.append({"id": s["id"], "name": s.get("name"),
+                                    "error": str(e)})
+                time.sleep(risk_interval(1.0, 2.0))  # 多订阅之间随机间隔
+            return {"busy": False, "results": results}
+        finally:
+            self._sub_checking = False
+
+    def _sub_enqueue(self, sub, items):
+        """把订阅的新视频加入下载队列（旧→新顺序）。"""
+        started = []
+        for it in sorted(items, key=lambda x: x.get("pubdate") or 0):
+            r = self.quick_download(
+                f"https://www.bilibili.com/video/{it['bvid']}")
+            if isinstance(r, list):
+                started.extend(r)
+        return started
+
+    def _start_sub_watcher(self):
+        t = threading.Thread(target=self._sub_loop, daemon=True)
+        t.start()
+
+    def _sub_loop(self):
+        """后台线程：按设置的间隔自动检查订阅更新。"""
+        time.sleep(20)  # 启动后延迟，避免抢占启动期网络
+        while True:
+            try:
+                interval = max(5, int(
+                    self.settings.get("sub_interval_min") or 30)) * 60
+                now = time.time()
+                due = [s for s in subscription.list_subs()
+                       if s.get("enabled") and
+                       now - (s.get("last_check") or 0) >= interval]
+                if due and not self._sub_checking:
+                    for s in due:
+                        self.sub_check(s["id"])
+            except Exception as e:  # noqa
+                LOGGER.warning("订阅轮询异常: %s", e)
+            time.sleep(60)
 
     # ---------- update check (④) ----------
     def check_update(self):
