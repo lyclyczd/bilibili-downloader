@@ -92,10 +92,20 @@ def main():
         sys.exit(r.returncode)
 
     out = os.path.join(DIST, "BilibiliDownloader")
+
+    def _has(*parts):
+        # PyInstaller 6.x 把附加数据收集到 _internal/ 下
+        cands = [os.path.join(out, *parts),
+                 os.path.join(out, "_internal", *parts)]
+        return any(os.path.exists(c) for c in cands)
+
     print("\n=== build output ===")
     print("exe:", os.path.join(out, "BilibiliDownloader.exe"))
-    print("ffmpeg bundled:", os.path.exists(os.path.join(out, "ffmpeg", "ffmpeg.exe")))
-    print("webview js bundled:", os.path.exists(os.path.join(out, "webview", "js", "api.js")))
+    print("ffmpeg bundled:",
+          _has("ffmpeg", "ffmpeg.exe") or
+          _has("imageio_ffmpeg", "binaries", "ffmpeg-win-x86_64-v7.1.exe"))
+    print("webview js bundled:", _has("webview", "js", "api.js"))
+    print("index.html bundled:", _has("bili_gui", "static", "index.html"))
     print("OK")
 
 

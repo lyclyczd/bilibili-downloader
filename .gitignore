@@ -21,6 +21,8 @@ dist/
 build/
 *.zip
 *.whl
+*.spec
+build_log.txt
 
 # ---- Local runtime data (cookies, history, settings) ----
 .bili_dl/
