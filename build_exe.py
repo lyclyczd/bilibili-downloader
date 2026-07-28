@@ -9,10 +9,6 @@ import os
 import sys
 import shutil
 import subprocess
-from PyInstaller.utils.win32.versioninfo import (
-    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable,
-    StringStruct, VarFileInfo, VarStruct,
-)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.join(HERE, "scripts")
@@ -25,35 +21,50 @@ VERSION_TXT = os.path.join(HERE, "build", "version_info.txt")
 
 
 def make_version_file():
-    """从 bili.utils.VERSION 生成 PyInstaller 版本资源（如 1.0.0 -> 1.0.0.0）。"""
+    """从 bili.utils.VERSION 生成 PyInstaller 版本资源文本（如 1.0.0 -> 1.0.0.0）。
+
+    直接写出 PyInstaller 可解析的标准版本信息文件，不依赖 PyInstaller 内部 API。
+    """
     sys.path.insert(0, SCRIPTS)
     from bili.utils import VERSION as app_ver
     parts = [int(x) for x in app_ver.split(".")]
     while len(parts) < 4:
         parts.append(0)
     vt = tuple(parts[:4])
-    dotted = ".".join(str(x) for x in vt)
-    info = VSVersionInfo(
-        ffi=FixedFileInfo(
-            filevers=vt, prodvers=vt, mask=0x3F, flags=0x0,
-            OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0),
-        ),
-        kids=[
-            StringFileInfo([StringTable(u"040904B0", [
-                StringStruct(u"CompanyName", u""),
-                StringStruct(u"FileDescription", u"BilibiliDownloader"),
-                StringStruct(u"FileVersion", u"{}".format(dotted)),
-                StringStruct(u"InternalName", u"BilibiliDownloader"),
-                StringStruct(u"LegalCopyright", u"\u00a9 BilibiliDownloader"),
-                StringStruct(u"OriginalFilename", u"BilibiliDownloader.exe"),
-                StringStruct(u"ProductName", u"BilibiliDownloader"),
-                StringStruct(u"ProductVersion", u"{}".format(dotted)),
-            ])]),
-            VarFileInfo([VarStruct(u"Translation", [1033, 1200])]),
-        ],
-    )
+    dots = ".".join(str(x) for x in vt)
+    lines = [
+        "# UTF-8",
+        "VSVersionInfo(",
+        "  ffi=FixedFileInfo(",
+        "    filevers=%r," % (vt,),
+        "    prodvers=%r," % (vt,),
+        "    mask=0x3f,",
+        "    flags=0x0,",
+        "    OS=0x40004,",
+        "    fileType=0x1,",
+        "    subtype=0x0,",
+        "    date=(0, 0)",
+        "  ),",
+        "  kids=[",
+        "    StringFileInfo(",
+        "      [",
+        "        StringTable(",
+        "          u'040904B0',",
+        "          [StringStruct(u'CompanyName', u''),",
+        "          StringStruct(u'FileDescription', u'BilibiliDownloader'),",
+        "          StringStruct(u'FileVersion', u'%s')," % dots,
+        "          StringStruct(u'InternalName', u'BilibiliDownloader'),",
+        "          StringStruct(u'LegalCopyright', u'\\u00a9 BilibiliDownloader'),",
+        "          StringStruct(u'OriginalFilename', u'BilibiliDownloader.exe'),",
+        "          StringStruct(u'ProductName', u'BilibiliDownloader'),",
+        "          StringStruct(u'ProductVersion', u'%s')])" % dots,
+        "      ]),",
+        "    VarFileInfo([VarStruct(u'Translation', [1033, 1200])])",
+        "  ]",
+        ")",
+    ]
     with open(VERSION_TXT, "w", encoding="utf-8") as f:
-        f.write(info.save())
+        f.write("\n".join(lines) + "\n")
     print("version file:", VERSION_TXT, "->", app_ver)
 
 
@@ -83,6 +94,7 @@ def main():
     os.makedirs(DIST, exist_ok=True)
     make_icon()
     make_version_file()
+    onefile = os.environ.get("BILI_ONEFILE") == "1"
 
     import imageio_ffmpeg
     import webview
@@ -111,7 +123,7 @@ def main():
         ENTRY,
         "--name", "BilibiliDownloader",
         "--paths", SCRIPTS,
-        "--onedir",
+        "--onedir" if not onefile else "--onefile",
         "--noconsole",
         "--icon", ICON,
         "--clean",
@@ -131,21 +143,30 @@ def main():
     if r.returncode != 0:
         sys.exit(r.returncode)
 
-    out = os.path.join(DIST, "BilibiliDownloader")
+    if onefile:
+        out = DIST
+        exe_path = os.path.join(DIST, "BilibiliDownloader.exe")
+    else:
+        out = os.path.join(DIST, "BilibiliDownloader")
+        exe_path = os.path.join(out, "BilibiliDownloader.exe")
 
     def _has(*parts):
-        # PyInstaller 6.x 把附加数据收集到 _internal/ 下
+        # PyInstaller 6.x 把附加数据收集到 _internal/ 下（onedir 模式）
         cands = [os.path.join(out, *parts),
                  os.path.join(out, "_internal", *parts)]
         return any(os.path.exists(c) for c in cands)
 
     print("\n=== build output ===")
-    print("exe:", os.path.join(out, "BilibiliDownloader.exe"))
-    print("ffmpeg bundled:",
-          _has("ffmpeg", "ffmpeg.exe") or
-          _has("imageio_ffmpeg", "binaries", "ffmpeg-win-x86_64-v7.1.exe"))
-    print("webview js bundled:", _has("webview", "js", "api.js"))
-    print("index.html bundled:", _has("bili_gui", "static", "index.html"))
+    print("mode:", "onefile" if onefile else "onedir")
+    print("exe:", exe_path, "exists:", os.path.exists(exe_path))
+    if not onefile:
+        print("ffmpeg bundled:",
+              _has("ffmpeg", "ffmpeg.exe") or
+              _has("imageio_ffmpeg", "binaries", "ffmpeg-win-x86_64-v7.1.exe"))
+        print("webview js bundled:", _has("webview", "js", "api.js"))
+        print("index.html bundled:", _has("bili_gui", "static", "index.html"))
+    else:
+        print("(onefile: 资源在运行时解压到 _MEIPASS，启动后验证)")
     print("OK")
 
 
