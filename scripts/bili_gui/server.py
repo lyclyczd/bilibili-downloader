@@ -123,17 +123,17 @@ class Handler(BaseHTTPRequestHandler):
             return CORE.clipboard_state()
         if path == "/api/settings/save":
             return CORE.save_settings(body or {})
-        if path == "/api/task/cancel":
+        if path in ("/api/task/cancel", "/api/tasks/cancel"):
             return {"ok": CORE.cancel(body.get("id"))}
-        if path == "/api/task/retry":
+        if path in ("/api/task/retry", "/api/tasks/retry"):
             return {"id": CORE.retry(body.get("id"))}
-        if path == "/api/task/pause":
+        if path in ("/api/task/pause", "/api/tasks/pause"):
             return {"ok": CORE.pause(body.get("id"))}
-        if path == "/api/task/resume":
+        if path in ("/api/task/resume", "/api/tasks/resume"):
             return {"id": CORE.resume(body.get("id"))}
-        if path == "/api/task/reorder":
+        if path in ("/api/task/reorder", "/api/tasks/reorder"):
             return {"ok": CORE.reorder(body.get("ids") or [])}
-        if path == "/api/task/open":
+        if path in ("/api/task/open", "/api/tasks/open"):
             return {"ok": CORE.open_path(body.get("path"))}
         if path == "/api/update":
             return CORE.check_update()

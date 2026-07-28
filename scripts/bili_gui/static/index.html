@@ -734,6 +734,7 @@ async function exportSettings(){
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
     a.download="bilidl-settings.json"; a.click(); toast("设置已导出"); }
   catch(e){ toast("导出失败："+e.message); }
+}
 async function importSettings(){
   const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
   inp.onchange=async ()=>{

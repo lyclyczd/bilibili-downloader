@@ -54,8 +54,9 @@ def has_ffmpeg():
     return FFMPEG != "ffmpeg"
 
 
-def _run(args, desc=""):
-    proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def _run(args, desc="", cwd=None):
+    proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          cwd=cwd)
     if proc.returncode != 0:
         tail = proc.stderr.decode("utf-8", "ignore")[-800:]
         raise RuntimeError(f"ffmpeg 失败 ({desc}):\n{tail}")
@@ -166,15 +167,24 @@ def flv_to_mp4(in_path, out_path):
 
 
 def burn_subtitle(video_path, sub_path, out_path, sub_type="ass", font_size=24):
-    """把字幕硬烧进画面（⑧）。sub_type: 'ass' | 'srt'。"""
+    """把字幕硬烧进画面（⑧）。sub_type: 'ass' | 'srt'。
+
+    Windows 下 ffmpeg 的 subtitles 滤镜会把盘符 "C:" 的冒号解析为
+    选项分隔符导致失败，因此切到字幕所在目录用相对文件名。
+    """
     if not has_ffmpeg():
         raise RuntimeError("未检测到 ffmpeg，无法烧录字幕")
-    sub_path = sub_path.replace("\\", "/")
+    video_path = os.path.abspath(video_path)
+    out_path = os.path.abspath(out_path)
+    sub_dir = os.path.dirname(os.path.abspath(sub_path)) or "."
+    sub_name = os.path.basename(sub_path)
+    # 滤镜内需转义单引号；相对文件名规避盘符冒号问题
+    esc = sub_name.replace("'", r"\'")
     force = f"force_style='FontSize={font_size},Alignment=2'"
-    vf = f"subtitles='{sub_path}':{force}"
+    vf = f"subtitles='{esc}':{force}"
     _run([FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
            "-i", video_path, "-vf", vf, "-c:a", "copy", out_path],
-         "字幕硬烧")
+         "字幕硬烧", cwd=sub_dir)
     return out_path
 
 

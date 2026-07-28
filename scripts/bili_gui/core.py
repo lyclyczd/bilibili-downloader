@@ -27,6 +27,20 @@ from bili.utils import (sanitize_filename, format_size, add_history, load_json,
 import bili_dl  # noqa
 from bili.clipboard_watch import read_clipboard, BILI_PATTERN  # noqa
 
+# ---------- 统一日志（⑩）：Web 模式与 EXE 模式都写入 LOG_FILE ----------
+import logging  # noqa
+
+ensure_app_dir()
+LOGGER = logging.getLogger("bili_gui")
+if not LOGGER.handlers:
+    try:
+        _h = logging.FileHandler(LOG_FILE, encoding="utf-8")
+        _h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        LOGGER.addHandler(_h)
+        LOGGER.setLevel(logging.INFO)
+    except Exception:
+        pass
+
 
 # ======================================================================
 # Task model
@@ -59,18 +73,23 @@ class TaskProgress:
         self.task = task
 
     def set_phase(self, name):
+        if self.task.status in ("paused", "canceled"):
+            return  # 不覆盖用户显式设置的状态
         self.task.phase = name
         if self.task.status == "queued":
             self.task.status = "running"
 
     def update(self, done, total, label, speed=0, eta=None):
-        self.task.phase = label or self.task.phase
-        self.task.status = "running"
         self.task.done = done
         self.task.total = total
         self.task.progress = (done / total * 100) if total else self.task.progress
-        self.task.speed = speed or 0
         self.task.eta = eta
+        if self.task.status in ("paused", "canceled"):
+            self.task.speed = 0
+            return  # 保持"已暂停/已取消"标记，不被下载线程覆盖
+        self.task.phase = label or self.task.phase
+        self.task.status = "running"
+        self.task.speed = speed or 0
 
     def finish(self, path):
         self.task.status = "done"
@@ -204,6 +223,7 @@ class GuiCore:
                          "path": path})
         except Exception:
             pass
+        LOGGER.info("下载完成: %s -> %s", task.title, path)
         self.notify("下载完成", f"{task.title}\n{os.path.basename(path)}")
         if self.settings.get("open_folder"):
             self.open_path(path)
@@ -396,6 +416,8 @@ class GuiCore:
                 rate_limit=rate_limit)
             self._on_done(prog.task, path)
         except Exception as e:  # noqa
+            LOGGER.error("下载失败: %s | %s: %s", prog.task.title,
+                         type(e).__name__, e)
             prog.error(f"{type(e).__name__}: {e}")
             raise
 
@@ -499,20 +521,32 @@ class GuiCore:
         return True
 
     def resume(self, tid):
-        """③ 恢复：从断点继续下载。"""
+        """③ 恢复：原地唤醒被暂停的下载线程（断点无缝继续）。"""
         t = self.store.get(tid)
-        if not t or t.status != "paused" or not getattr(t, "_job", None):
+        if not t or t.status != "paused":
             return None
-        self._controls.pop(tid, None)
+        ctrl = getattr(t, "_control", None) or self._controls.get(tid)
+        if ctrl is not None:
+            # 原线程仍阻塞在 _check() 里，清除暂停标志即可原地继续
+            t.status = "running"
+            t.phase = "下载中"
+            ctrl.resume()
+            return t.id
+        # 线程已不存在（如服务重启后）：按断点重建任务
+        if not getattr(t, "_job", None):
+            return None
         nt = self.store.new_task(t.title, t.kind)
         nt._job = t._job
         nt._args = t._args
-        ctrl = DownloadControl()
-        self._controls[nt.id] = ctrl
+        nctrl = DownloadControl()
+        self._controls[nt.id] = nctrl
+        nt._control = nctrl
         q = TaskQueue(workers=1, retries=2)
         q.add(t.title, self._run_job, self.session, t._job, t._args,
-               TaskProgress(nt), ctrl, self._calc_rate())
+               TaskProgress(nt), nctrl, self._calc_rate())
         threading.Thread(target=self._run_queue, args=(q,), daemon=True).start()
+        t.status = "canceled"
+        t.phase = "已由新任务接管"
         return nt.id
 
     def reorder(self, ids):
@@ -709,20 +743,42 @@ class GuiCore:
         return self.settings
 
     # ---------- 后期加工 (⑧⑨) ----------
+    @staticmethod
+    def _default_out(video, suffix):
+        """基于源文件生成默认输出路径：xxx.mp4 -> xxx.<suffix>.mp4"""
+        base, ext = os.path.splitext(video)
+        return f"{base}.{suffix}{ext or '.mp4'}"
+
     def proc_burn(self, video, sub, out, font_size=24):
-        return muxer.burn_subtitle(video, sub, out, font_size=font_size)
+        if not video or not os.path.isfile(video):
+            raise ValueError(f"视频文件不存在: {video}")
+        if not sub or not os.path.isfile(sub):
+            raise ValueError(f"字幕文件不存在: {sub}")
+        out = out or self._default_out(video, "burn")
+        sub_type = "srt" if str(sub).lower().endswith(".srt") else "ass"
+        return muxer.burn_subtitle(video, sub, out, sub_type=sub_type,
+                                   font_size=font_size)
 
     def proc_cut(self, video, out, start, end):
+        if not video or not os.path.isfile(video):
+            raise ValueError(f"视频文件不存在: {video}")
+        if not start:
+            raise ValueError("请提供起始时间（如 00:01:30）")
+        out = out or self._default_out(video, "cut")
         return muxer.cut(video, out, start, end)
 
     def proc_merge(self, files, out, titles):
-        fl = [f for f in (files or []) if os.path.isfile(f)]
+        fl = [f for f in (files or []) if f and os.path.isfile(f)]
         if not fl:
             raise ValueError("未提供有效视频文件")
+        if not out:
+            out = self._default_out(fl[0], "merged")
         tt = titles if isinstance(titles, list) else None
         return muxer.merge_playlist(fl, out, titles=tt)
 
     def proc_ai_sub(self, video, lang="zh", model="base"):
+        if not video or not os.path.isfile(video):
+            raise ValueError(f"视频文件不存在: {video}")
         out_dir = self.settings.get("output") or os.getcwd()
         return muxer.ai_subtitle(video, out_dir, lang=lang, model=model)
 
