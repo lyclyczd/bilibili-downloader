@@ -1,72 +1,1 @@
-"""Smart task queue: runå¤šä»»åŠ¡å¹¶è¡Œæ’é˜Ÿ, per-task auto retry, summary report."""
-import time
-import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-
-class Task:
-    def __init__(self, name, func, *args, **kwargs):
-        self.name = name
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-        self.status = "pending"      # pending / running / done / failed
-        self.error = None
-        self.attempts = 0
-
-
-class TaskQueue:
-    def __init__(self, workers=3, retries=2):
-        self.workers = max(1, workers)
-        self.retries = retries
-        self.tasks = []
-
-    def add(self, name, func, *args, **kwargs):
-        self.tasks.append(Task(name, func, *args, **kwargs))
-
-    def run(self):
-        total = len(self.tasks)
-        print(f"\n==> ä»»åŠ¡é˜Ÿåˆ—: {total} ä¸ªä»»åŠ¡, {self.workers} å¹¶è¡Œ, å¤±è´¥è‡ªåŠ¨é‡è¯• {self.retries} æ¬¡")
-
-        def _run(task):
-            task.status = "running"
-            for attempt in range(self.retries + 1):
-                task.attempts = attempt + 1
-                try:
-                    task.func(*task.args, **task.kwargs)
-                    task.status = "done"
-                    return task
-                except KeyboardInterrupt:
-                    task.status = "failed"
-                    task.error = "ç”¨æˆ·ä¸­æ–­"
-                    raise
-                except Exception as e:  # noqa
-                    task.error = str(e) or e.__class__.__name__
-                    if attempt < self.retries:
-                        wait = 2 ** attempt * 2
-                        print(f"\n  [é‡è¯•] {task.name}: {task.error}ï¼Œ{wait}s åç¬¬ {attempt + 2} æ¬¡å°è¯•")
-                        time.sleep(wait)
-                    else:
-                        task.status = "failed"
-                        traceback.print_exc()
-            return task
-
-        done = 0
-        try:
-            with ThreadPoolExecutor(max_workers=self.workers) as pool:
-                futs = {pool.submit(_run, t): t for t in self.tasks}
-                for fut in as_completed(futs):
-                    t = futs[fut]
-                    done += 1
-                    mark = "âœ…" if t.status == "done" else "âŒ"
-                    print(f"\n[{done}/{total}] {mark} {t.name}"
-                          + (f"  é”™è¯¯: {t.error}" if t.status == "failed" else ""))
-        except KeyboardInterrupt:
-            print("\né˜Ÿåˆ—å·²ä¸­æ–­ã€‚å·²å®Œæˆçš„ä»»åŠ¡ä¸å—å½±å“ï¼Œé‡è·‘å¯æ–­ç‚¹ç»­ä¼ ã€‚")
-
-        ok = sum(1 for t in self.tasks if t.status == "done")
-        fail = [t for t in self.tasks if t.status == "failed"]
-        print(f"\n==> é˜Ÿåˆ—å®Œæˆ: æˆåŠŸ {ok} / å¤±è´¥ {len(fail)} / å…± {total}")
-        for t in fail:
-            print(f"    âŒ {t.name}: {t.error}")
-        return ok, fail
+Ûm¶ÛnwéŞµïnøÛNøë^÷é½´ï^ùëùëÚÛNöï{–¸õ§¸m¶Û{ŸkW¹oÖú{ÆµñÇºñïv{ß|õıœÛNôëöÙŞøë^÷é½´ë^ùïŸÛNöëøïnıÙÍ´ï~ùéŞë^öïİ´ïn¹ïNŸïnøÙí¶Ûm¶Ñ®½éŞôéşöï´ï½éŞ¹Ñ®½éŞôéşöï´ïöë^·ë¶ë^·é½ë®öéşÛN·éşë~ùïnöëïë®ùïùïn¹ï}´ëŞïNŸïnøÛNxëÎöëµëtéşŸéÎ9ïÎ¹ë~ùïŸïmœÛNµï~_ë~ŸéŞôéÎ¹ï¹ëÑ­ë~œë^÷ï}´çµï~›İ­ÛM´ÛM´ë¹ë­´åş_ëŞëŞøåş_ÛÎ÷ëœë­œÛNë^ëœÛNºïë}œÛMšë^öë¾÷ÙÍ´Ù­šé¾ûë^öë¾÷ÛİÚÑ­´ÛM´ÛM´ÛM´ÛN÷ëœë­éîµéŞ¹ÛMİÛNë^ëÛM´ÛM´ÛM´ÛM´ï~¹éÎºÙîºïë}´İİ´ë®ùéî·Ñ­´ÛM´ÛM´ÛM´ÛN÷ëœë­ë^öë¾÷ÛMİÛNµïn»ï}ÛM´ÛM´ÛM´ÛM´ï~¹éÎºÙî›ï¾µïn»ï}´İİ´é¾ûë^öë¾÷Ñ­´ÛM´ÛM´ÛM´ÛN÷ëœë­ï~øë^øï÷ÛMİÛM¶ïN¹éî¸ëŞë½¶ÛM´ÛM´ÛM´Û}´ïN¹éî¸ëŞë½´Ùı´ïnùéîëŞë½´Ùı´ëŸéî¹ÛMŸÛNºë^½éÎ¹ëÛM´ÛM´ÛM´ÛM´ï~¹éÎºÙî¹ïnöéşöÛMİÛNéşëÛM´ÛM´ÛM´ÛM´ï~¹éÎºÙîµïøëïNøï}´İİ´ßMÑ­ë~œë^÷ï}´çµï~›ç^ùëùëÚÑ­´ÛM´ÛN¸ëºÛN_åş½éî½ï_åı¼ï~¹éÎºÙÍ´ï¾Ÿïn›ëöï}İß}œÛNöëøïn½ë÷İİöÛİÚÑ­´ÛM´ÛM´ÛM´ÛN÷ëœë­ï¾Ÿïn›ëöï}´İİ´éŞµïÍ¼ß]œÛNûéşöé¾¹ïn÷ÛİÛM´ÛM´ÛM´ÛM´ï~¹éÎºÙîöëøïn½ë÷ÛMİÛNöëøïn½ë÷Ñ­´ÛM´ÛM´ÛM´ÛN÷ëœë­ïµï~›ï}´İİ´å¾]Ñ­ÛM´ÛM´ë¹ë­´ë^¸ë¼ï~¹éÎºÙÍ´éîµéŞ¹ÙÍ´ë®ùéî·ÙÍ´Ù®µïn»ï}œÛMšÙ®›ï¾µïn»ï}½İ­ÛM´ÛM´ÛM´ÛM´ï~¹éÎºÙîøë^÷é¾÷ÙîµïNôëë¼çµï~›ÛÎë^ëœÛNºïë}œÛMšë^öë¾÷ÙÍ´Ù­šé¾ûë^öë¾÷Ûİ½Ñ­ÛM´ÛM´ë¹ë­´ïnùéí¼ï~¹éÎºÛİÚÑ­´ÛM´ÛM´ÛM´ÛNøéşøë^œÛMİÛNœëÛÎ÷ëœë­ïµï~›ï}½Ñ­´ÛM´ÛM´ÛM´ÛNôïn½éîøÛÎºÛn\éíİİİŞÛG¸m¶Û{ŸkW½÷Ï_{Ÿ<÷½ÚÛNÛïŸïµéÎİÛG¸oÆš{†Ûm·¹ñ¦µÙÍ´í¾÷ëœë­ï¾Ÿïn›ëöï~İÛG¹oÖú{ÆµñÍœÛG¹k†õ{Æøk—¼ó¶š{ŸkÇ½ó¿{ÆŸ÷´í¾÷ëœë­ïn¹ïöëŞ¹ï~İÛGºiÆµÛm½Ñ­ÛM´ÛM´ÛM´ÛM´ë¹ë­´åşöïÛÎøë^÷é½½İ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïµï~›Ùî÷ïµïùï}´İİ´Ûnöïéî½éî»ÛmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ë®Ÿïm´ë^øï¹éŞôï´ëŞÛNöë^ë¾¹ÛÎ÷ëœë­ïn¹ïöëŞ¹ï}´Ù½´ß]½İ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïµï~›ÙîµïøëïNøï}´İİ´ë^øï¹éŞôï´Ù½´ß]ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïöïİÚÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNøë^÷é½ë®ùéî·ÛÍšïµï~›Ùîµïn»ï}œÛMšÙ®øë^÷é½é¾ûë^öë¾÷ÛİÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïµï~›Ùî÷ïµïùï}´İİ´Ûn¸éşë¶Ñ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNöëøïöéí´ïµï~›Ñ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛN¹ïÎ·ëôï´á¾¹ïŞ¶éşµïn¸ãŞï¹ïnöïôïÚÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNøë^÷é½ï~øë^øï÷ÛMİÛM¶ë®µëŞœë¸ÛmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïµï~›Ùî¹ïnöéşöÛMİÛM¶{¿xkÇºóÆû{†üi×º÷¦ÛmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïnµëŞ÷ëÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ëüë~¹ïNøÛN9ïÎ·ëôï½éşÛNµï}´ëÚÛM´Û}´éîŸï^µÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNøë^÷é½ëöïnŸïm´İİ´ï~øïm¼ë½ÛNŸïm´ëåş_ë~œë^÷ï~_åıåş_éîµéŞ¹åş_Ñ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛN½ë­´ë^øï¹éŞôï´İÍ´ï~¹éÎºÙîöëøïn½ë÷İ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ï¾µëŞøÛMİÛMöÛMšÙ­´ë^øï¹éŞôï´Ù­´ßmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïNöëŞï¼ë­¶åÎÛM´å·½ó¿{ÆŸ÷]ÛNÛïµï~›Ùîë^ëİİ­´í¾øë^÷é½ëöïnŸïnİyöÜñÎÛï¾µëŞøíŞ÷ÛG¹÷O{¶œiÍ´í¾µïøëïNøÛM›ÛMöíİ´{¦œkW¹oO]{ÆŸ÷¶ÛİÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ï½éŞ¹Ùî÷éÎ¹ëôÛÎûë^½ï½Ñ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛN¹éÎ÷ëÚÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNøë^÷é½ï~øë^øï÷ÛMİÛM¶ë®µëŞœë¸ÛmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïöë^·ë¶ë^·é½ïNöëŞï_ëüë}¼ÛİÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïn¹ïùïnÛNøë^÷é½Ñ­´ÛM´ÛM´ÛM´ÛN¸éşë´İİ´ßMÛM´ÛM´ÛM´ÛM´ïöïİÚÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNûëŞøëÍ´ç¼ïn¹ë^¸çNŸéşœãüë·ïøéşöÛÎë^üåşûéşöé¾¹ïn÷İŞ÷ëœë­ï¾Ÿïn›ëöï}½ÛNµï}´ïNŸéşœİ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ë®ùï÷ÛMİÛNÛïNŸéşœÙî÷ï¶éŞ½ï¼åşöïÙÍ´ï½İ­´ï´ë®Ÿïm´ï´ëŞÛN÷ëœë­ïµï~›ï~İÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNºéşöÛNºïøÛN½éí´ë^÷åş·éşïNœëøë¸ÛÎºïøï}½İ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ï´İİ´ë®ùï÷å¾ºïøåİÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ëŸéî¹ÛM›İİ´ß]ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´éŞµïn›ÛMİÛM¶{o\ó¶ÛN½ë­´ïï~øë^øï÷ÛMİİİ´Ûn¸éşë¶ÛN¹éÎ÷ë´Ûg¶õßÛmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïNöëŞï¼ë­¶åÎå¾ÛëŸéî¹íİŸí¾øéşøë^œíŞ]ÛNÛéŞµïn›íİ´í¾øÙîë^ëİÛmÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´Ù½´ÛÎºÛm´ÛG½÷}{ÆŸiıÚÛNÛïëöïnŸïnİÛm´ëŞºÛNøÙî÷ïµïùï}´İİİÛM¶ë®µëŞœë¸Ûm´ëœï~¹ÛM¶Ûm½ÛİÛM´ÛM´ÛM´ÛM´ëüë~¹ïNøÛNëıënŸë^öë=éîøëöïnùïNøİ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïNöëŞï¼Ûn\éç½÷Ï_{Ÿ<÷·¹o¶ö{†üi×º÷¦{4óg¹o¶ö{–ñÇºóÏt{¿Zó‡¸m¶Û{ŸkW¸oÏ{Ÿ÷·¹mÖõ{Ÿwñ×ŸmÏ{ß;ñ×¼o¿u{Ÿi÷º÷¦{¿6o×»m¶{†ÜkG·óO6Ûm½Ñ­ÛM´ÛM´ÛM´ÛM´éş›ÛMİÛN÷ïÛÍõÛNºéşöÛNøÛN½éí´ï~¹éÎºÙîøë^÷é¾÷ÛN½ë­´ïï~øë^øï÷ÛMİİİ´Ûn¸éşë¶ÛİÛM´ÛM´ÛM´ÛM´ë®µëŞœÛMİÛN[ï´ë®Ÿïm´ï´ëŞÛN÷ëœë­ïµï~›ï}´ëŞºÛNøÙî÷ïµïùï}´İİİÛM¶ë®µëŞœë¸Ûn]Ñ­´ÛM´ÛM´ÛM´ÛNôïn½éîøÛÎºÛn\éíİİİŞÛG½÷Ï_{Ÿ<÷·¹iï{¯<÷MÚÛGºóÏt{Ÿõı´í¾Ÿé¾İÛMŸÛG¹k†õ{Æøk´í¾œëÛÎºë^½éÍ½íİ´Ùı´{Ÿ9o]´í¾øéşøë^œíİ¶ÛİÛM´ÛM´ÛM´ÛM´ë®Ÿïm´ï´ëŞÛNºë^½éÍÚÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNôïn½éîøÛÎºÛm´ÛM´ÛG¶õßÛNÛïéîµéŞ¹íİÚÛNÛïëöïnŸïnİÛm½Ñ­´ÛM´ÛM´ÛM´ÛNöëøïöéí´éş›ÙÍ´ë®µëŞœÑ

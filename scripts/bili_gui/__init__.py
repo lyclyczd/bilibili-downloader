@@ -1,1 +1,1 @@
-"""bilibili-downloader GUI package."""
+Ûm¶Ûn¶ëŞœëŞ¶ëŞœëİëŸï¾éÎŸë^¸ëöÛN;ç=ÛNôë^·é¾µë¾¹Ùí¶Ûm¶Ñ

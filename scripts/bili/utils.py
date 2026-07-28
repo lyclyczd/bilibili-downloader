@@ -1,121 +1,1 @@
-"""Common utilities: paths, filename sanitize, size/time formatting, config dir."""
-import os
-import re
-import json
-import time
-import random
-
-APP_DIR = os.path.join(os.path.expanduser("~"), ".bili_dl")
-COOKIE_FILE = os.path.join(APP_DIR, "cookies.json")
-ACCOUNTS_FILE = os.path.join(APP_DIR, "accounts.json")
-HISTORY_FILE = os.path.join(APP_DIR, "history.json")
-WBI_CACHE_FILE = os.path.join(APP_DIR, "wbi_cache.json")
-LOG_DIR = os.path.join(APP_DIR, "logs")
-LOG_FILE = os.path.join(LOG_DIR, "gui.log")
-VERSION_FILE = os.path.join(APP_DIR, "VERSION")
-
-# è½¯ä»¶ç‰ˆæœ¬ï¼ˆæœ¬åœ°ç‰ˆæœ¬å·ï¼Œä»…ä¾›æ˜¾ç¤ºï¼›æœ¬è½¯ä»¶ä¸ºçº¯æœ¬åœ°åˆ†å‘ï¼Œä¸ä¾èµ– GitHubï¼‰ã€‚
-VERSION = "1.0.0"
-
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-]
-
-
-def ensure_app_dir():
-    os.makedirs(APP_DIR, exist_ok=True)
-    os.makedirs(LOG_DIR, exist_ok=True)
-    return APP_DIR
-
-
-def risk_interval(base=2.0, jitter=4.0):
-    """é™ä½é£æ§ï¼šåœ¨ base~base+jitter ç§’é—´éšæœºé—´éš”ï¼ˆä»»åŠ¡ä¹‹é—´è°ƒç”¨ï¼‰ã€‚"""
-    return base + random.uniform(0, jitter)
-
-
-def pick_ua():
-    return random.choice(USER_AGENTS)
-
-
-def sanitize_filename(name, max_len=120):
-    """Remove characters illegal on Windows/macOS/Linux filesystems."""
-    name = re.sub(r'[\\/:*?"<>|\r\n\t]', "_", str(name)).strip(" .")
-    if len(name) > max_len:
-        name = name[:max_len].rstrip(" .")
-    return name or "untitled"
-
-
-def format_size(n):
-    n = float(n or 0)
-    for unit in ("B", "KB", "MB", "GB", "TB"):
-        if n < 1024 or unit == "TB":
-            return f"{n:.2f}{unit}" if unit != "B" else f"{int(n)}B"
-        n /= 1024
-    return f"{n:.2f}TB"
-
-
-def format_eta(seconds):
-    if seconds is None or seconds < 0 or seconds != seconds:
-        return "--:--"
-    seconds = int(seconds)
-    h, r = divmod(seconds, 3600)
-    m, s = divmod(r, 60)
-    return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
-
-
-def load_json(path, default=None):
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default
-
-
-def save_json(path, data):
-    ensure_app_dir()
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
-
-
-def add_history(record):
-    """Append a download record to local history (ä¸ªäººä¸­å¿ƒç¼“å­˜è®°å½•)."""
-    hist = load_json(HISTORY_FILE, []) or []
-    if not isinstance(hist, list):
-        hist = []
-    record = dict(record)
-    record["time"] = time.strftime("%Y-%m-%d %H:%M:%S")
-    hist.append(record)
-    save_json(HISTORY_FILE, hist[-500:])
-
-
-_BV_ALPHABET = "FcwAPNKTMug3GV5Lj7EJnHpWsx4tb8haYeviqBz6rkCy12mUSDQX9RdoZf"
-_BV_XOR = 23442827791579
-_BV_MASK = 2251799813685247
-_BV_MAX = 1 << 51
-_BV_BASE = 58
-_BV_ENC_MAP = (8, 7, 0, 5, 1, 3, 2, 4, 6)   # positions in 9-char suffix after "BV1"
-_BV_DEC_MAP = tuple(reversed(_BV_ENC_MAP))
-
-
-def av2bv(aid):
-    """Convert av number to BV id (2023 XOR algorithm)."""
-    suffix = [""] * 9
-    tmp = (_BV_MAX | int(aid)) ^ _BV_XOR
-    for i in range(9):
-        suffix[_BV_ENC_MAP[i]] = _BV_ALPHABET[tmp % _BV_BASE]
-        tmp //= _BV_BASE
-    return "BV1" + "".join(suffix)
-
-
-def bv2av(bvid):
-    """Convert BV id to av number."""
-    if not bvid.startswith("BV1") or len(bvid) != 12:
-        raise ValueError(f"éæ³• BV å·: {bvid}")
-    tmp = 0
-    for i in range(9):
-        tmp = tmp * _BV_BASE + _BV_ALPHABET.index(bvid[3 + _BV_DEC_MAP[i]])
-    return (tmp & _BV_MASK) ^ _BV_XOR
+Ûm¶Ûn7éşéŞŸéí´ïøëŞœëŞøëŞ¹ï}ÚÛNôë^øëÎ÷ÙÍ´ë®½éÎ¹éîµéŞ¹ÛN÷ë^ëŞøëŞÚëœÛN÷ëŞÚëŸï½éŞ¹ÛNºéşöéŞµïøëŞë½œÛN·éşë®½ë½´ë½ïmÛm¶ÛmëŞïNŸïnøÛNŸï}ëŞïNŸïnøÛNöëëŞïNŸïnøÛNšï~ŸéíëŞïNŸïnøÛNøëŞëëŞïNŸïnøÛNöë^ëŸéİÑ®5çNtåş8ãŞvÛMİÛNŸï}ïNµï¼Ùîšéş½éí¼éş÷Ùîôë^øëÍëüïNµéî¸ï÷ëöÛÍ¶íí¶ÛİœÛM¶Ùî¶ëŞœëŞ_ëœÛm½Ñ®7áşá¾=ã_ã®=áÎ9ÛMİÛNŸï}ïNµï¼Ùîšéş½éí¼ã^tçN_ã=çmœÛM¶ë~Ÿéş›ëŞ¹ï}é®÷éşÛm½Ñ®5ã~7áşyáîxç~_ã®=áÎ9ÛMİÛNŸï}ïNµï¼Ùîšéş½éí¼ã^tçN_ã=çmœÛM¶ë^·ë~Ÿïï÷Ùîšï~Ÿéí¶ÛİãÎ=ç~xáşvçŞ_ã®=áÎ9ÛMİÛNŸï}ïNµï¼Ùîšéş½éí¼ã^tçN_ã=çmœÛM¶ëÎ½ï~øéşöïİé®÷éşÛm½Ñ®{ãn=åş7ã^7ãÎ9åş:ãŞã´İİ´éş÷Ùîôë^øëÍé®ŸëŞÛÎ5çNtåş8ãŞvÙÍ´Ûnûën½åş·ë^·ëÎ¹Ùîšï~Ÿéí¶ÛİáÎã¾_ã=çm´İİ´éş÷Ùîôë^øëÍé®ŸëŞÛÎ5çNtåş8ãŞvÙÍ´Ûnœéş»ï}¶ÛİáÎã¾_ã®=áÎ9ÛMİÛNŸï}ïNµï¼Ùîšéş½éí¼áÎã¾_ã=çmœÛM¶ë¾ùëİéÎŸë½¶Ûİç®9çnwãŞáî_ã®=áÎ9ÛMİÛNŸï}ïNµï¼Ùîšéş½éí¼ã^tçN_ã=çmœÛM¶ç®9çnwãŞáí¶ÛİÑ­·ÛG¼mÖŸ{†Ûo§»óß<{¯\iÇŸmÏ<{¯\iÇ¹õÆô{¿=óÇºõÆœ{Ÿo·ŸmÏ{†Ûó—¸mï[{¯|mç»k†ÚyöÜõ·ºõÆœ{Æİi÷¸m¶ú{†üm§»m¦Ÿ{¯\iÇ¹õÆô{Ÿ<ó§¹ñÿuyöÜñÇ¸oÏ{†Şõ×¼oŸzÛN;ëŞøãÎùëgŸmÏ={4ómç®9çnwãŞáí´İİ´ÛmõÙíôÙíôÛmÑ®yç~9çn_ã^;ãçwÛMİÛN[Ñ­´ÛM´ÛM¶áŞŸí®½éÎœë]ŸßßM´ÛÎ{ëŞëŸï¾÷ÛNç´ß]ôÙíôİ½´ç¾½éíúßÛÛNüß­øÛİ´ã^ôïNœë{ë¶á¾½ïŸß÷ß½ß}úÛM¼á¾<çáÍœÛNœëŞ›ë´ã¾¹ë~›éı½ÛN7ëÎöéşëŸß]öß­ßMßMßM´ç~µë®µïn½Ùıùß}ûÙí÷ß­¶ÙÍÛM´ÛM´ÛnéşÚëŞœéÎµÙıùÙíôÛM¼ç¾½éî¸éşûï}´áîxÛMõßMßMÛÛN{ëŞß­øİ½´ïÍúß½ÛN5ïNôéÎ¹ç¾¹ënëŞøÙıùß}ûÙí÷ß­´ÛÎãÎxáŞÙÍ´éÎ½é¾¹ÛN;ë·é¾ŸÛİ´ã~¼ïnŸéŞ¹ÙıõßmùÙíôÙíôÙíôÛNwë^ºë^öëİŸß÷ß½ß}úÛN9ë»ÙıõßmùÙíôÙíôÙíôÛmœÑ­´ÛM´ÛM¶áŞŸí®½éÎœë]ŸßßM´ÛÎë^·ëŞïŸï~¼İ½´ãŞï¹éÍ´áŞµë}´áşwÛN|ÛMõßN_ß]ùåıûÛİ´ã^ôïNœë{ë¶á¾½ïŸß÷ß½ß}úÛM¼á¾<çáÍœÛNœëŞ›ë´ã¾¹ë~›éı½ÛN7ëÎöéşëŸß]öß­ßMßMßM´ç~µë®µïn½Ùıùß}ûÙí÷ß­¶ÙÍåİÑ­ë¹ë­´ëï~ùïn¹åşµïNôåş¸ëŞöÛÍ½İ­ÛM´ÛM´éş÷Ùîë^›ë¸ëŞöï}¼ã^tçN_ã=çmœÛN¹ïÎ½ï~øåşŸé½İçöï¹ÛİÛM´ÛM´éş÷Ùîë^›ë¸ëŞöï}¼áÎã¾_ã=çmœÛN¹ïÎ½ï~øåşŸé½İçöï¹ÛİÛM´ÛM´ïn¹ïùïnÛN5çNtåş8ãŞvÑ­Ñ®¸ëºÛNöëŞ÷é¾_ëŞï¹ïnúë^œÛÎ¶ë^÷ëİßmßMœÛNšëŞøï¹ïmİßßM½İ­ÛM´ÛM´Ûm¶Ûg½÷ß{†İñç½k{¯k·ŸmÏZ{Ÿ\kÍ´ënµï~¹íî¶ë^÷ë›é®½ïøëöÛG»k¿v{ß{o‡½õ¯{¯\m§½÷¶ø{ßZ÷‡ŸmÏ<{†Ûm·¹ñ¦µ{†ıñ·½÷¶ø{Æôów»÷†¼yöÜó×·óO6Ûm¶ÛmÛM´ÛM´ïn¹ïùïnÛN¶ë^÷ë´Ù½´ïnµéî¸éşÙîùéî½ë®ŸïnÛÍôÙÍ´é®½ïøëöÛİÑ­ë¹ë­´ïN½ë~›åşùë]¼ÛİÚÑ­´ÛM´ÛNöëøïöéí´ïnµéî¸éşÙî·ëÎŸëŞ·ë¼çwãvåş5ã¾9áîxç}½Ñ­Ñ®¸ëºÛN÷ë^ëŞøëŞÚë_ë®½éÎ¹éîµéŞ¹ÛÎë^ëœÛNë^üåşœëİİõßmôÛİÚÑ­´ÛM´ÛM¶Ûm¶çn¹éŞŸï®¹ÛN·ëÎµïnµë~øëöï}´ëŞœéÎ¹ë¾µéÍ´éşÛN{ëŞëŸï¾÷Ùşë^·áşwÙşëŞïüÛNºëŞœë÷ïŞ÷ï¹éŞ÷Ùí¶Ûm¶Ñ­´ÛM´ÛNë^ë´İİ´ïn¹Ùî÷ï¶ÛÎöÛ¾[åÎ\ÙıÚÙ­ßÛmÜİîÜåÎöåÎåÎøåİ»ÙÍ´Ûn_ÛmœÛN÷ïöÛÎë^ë½Ûİï~øïn½ïM¼Ûm´Ùí¶ÛİÛM´ÛM´ëŞºÛNœëÛÎë^ë½ÛMŞÛNë^üåşœëİ­ÛM´ÛM´ÛM´ÛM´éîµéŞ¹ÛMİÛNë^ë[İ®ë^üåşœëåİïn÷ïöëŞôÛÍ¶ÛMÛm½Ñ­´ÛM´ÛNöëøïöéí´éîµéŞ¹ÛNŸïm´ÛnùéîøëŞøéÎ¹ë¶Ñ­Ñ®¸ëºÛNºéşöéŞµï_ï~½í®¹ÛÎÛİÚÑ­´ÛM´ÛNÛMİÛNºéÎŸë^øÛÎÛNŸïm´ßM½Ñ­´ÛM´ÛNºéşöÛNùéî½ï´ëŞÛM¼Ûn6ÛmœÛM¶á¾6ÛmœÛM¶áŞ6ÛmœÛM¶ã¾6ÛmœÛM¶ç6Ûm½İ­ÛM´ÛM´ÛM´ÛM´ëŞºÛNÛMÜÛMõßMöß´éşöÛNùéî½ï´İİİÛM¶ç6ÛmÚÑ­´ÛM´ÛM´ÛM´ÛM´ÛM´ÛNöëøïöéí´ë­¶í¾İ­ßnºíŞÛïëŞøíİ¶ÛN½ë­´ïëŞøÛMµİİ´Ûn6Ûm´ëœï~¹ÛNºÛnÛëŞï¼éí½íŞ6ÛmÛM´ÛM´ÛM´ÛM´éí´ÙıİÛMõßMößÛM´ÛM´ïn¹ïùïnÛNºÛnÛéíÚÙíöë®İç6ÛmÑ­ë¹ë­´ë®Ÿïnë^øåş¹ïµÛÎ÷ë·éşë÷ÛİÚÑ­´ÛM´ÛN½ë­´ï~¹ë~Ÿéî¸ï}´ëŞ÷ÛNéşë´éşöÛN÷ë·éşë÷ÛMÜÛMôÛNŸïm´ï~¹ë~Ÿéî¸ï}´Û]İÛN÷ë·éşë÷İ­ÛM´ÛM´ÛM´ÛM´ïn¹ïùïnÛM¶Ùİİ­Ùİ¶Ñ­´ÛM´ÛN÷ë·éşë÷ÛMİÛN½éîøÛÎ÷ë·éşë÷ÛİÛM´ÛM´ëÍœÛNöÛMİÛN¸ëŞúéŞŸë¼ï~¹ë~Ÿéî¸ï}œÛM÷ß­ôßM½Ñ­´ÛM´ÛNÙÍ´ï}´İİ´ë½ï®éş¸ÛÎöÙÍ´ß­ôÛİÛM´ÛM´ïn¹ïùïnÛNºÛnÛëÍÚëİİ®ÛéİÚßMöëİİ®Ûï}ÚßMöëİÛm´ëŞºÛN¼ÛN¹éÎ÷ë´ë­¶í¾İ­ôßn¸íİÚí¾÷İ­ôßn¸íİ¶Ñ­Ñ®¸ëºÛNœéşµë_é®÷éşÛÎôë^øëÍœÛN¸ëºë^ùéÎøİŞéşë½İ­ÛM´ÛM´ïöïİÚÑ­´ÛM´ÛM´ÛM´ÛNûëŞøëÍ´éşôëÛÎôë^øëÍœÛM¶ïm¶ÙÍ´ëë~Ÿë½éî»İİ¶ïøë­ßÍ¶Ûİ´ë^÷ÛNºİ­ÛM´ÛM´ÛM´ÛM´ÛM´ÛM´ïn¹ïùïnÛNšï~ŸéíéÎŸë^¸ÛÎºÛİÛM´ÛM´ëüë~¹ïNøÛN9ïÎ·ëôï½éşİ­ÛM´ÛM´ÛM´ÛM´ïn¹ïùïnÛN¸ëºë^ùéÎøÑ­Ñ®¸ëºÛN÷ë^úë_é®÷éşÛÎôë^øëÍœÛN¸ë^øë]½İ­ÛM´ÛM´ëï~ùïn¹åşµïNôåş¸ëŞöÛÍ½Ñ­´ÛM´ÛNøéŞôÛMİÛNôë^øëÍ´Ù½´ÛmïïM¶Ñ­´ÛM´ÛNûëŞøëÍ´éşôëÛÎøéŞôÙÍ´ÛnûÛmœÛN¹éî·éş¸ëŞë½İÛnùïºÙİüÛm½ÛNµï}´ë­ÚÑ­´ÛM´ÛM´ÛM´ÛNšï~ŸéíëùéŞôÛÎ¸ë^øë]œÛNºÙÍ´ëï~ùïn¹åşµï~·ëŞ½İŞ:ë^œï~¹ÙÍ´ëŞë¹éîøİİöÛİÛM´ÛM´éş÷ÙîöëôéÎµë~¹ÛÎøéŞôÙÍ´ïNµï¼ÛİÑ­ë¹ë­´ë^¸ë_ëÎ½ï~øéşöïİ¼ïn¹ë~Ÿïn¸ÛİÚÑ­´ÛM´ÛM¶Ûm¶ã^ôïN¹éî¸ÛNµÛN¸éşûéîœéşµë´ïn¹ë~Ÿïn¸ÛNøéı´éÎŸë~µéÍ´ëÎ½ï~øéşöïİ´ÛÇ¸oÆš{†Úm§¸oÆ{–ßów»mÏw{–÷Ç¼iæô{–İ÷½Ùí¶Ûm¶Ñ­´ÛM´ÛN¼ëŞ÷ï´İİ´éÎŸë^¸åşšï~Ÿéí¼ãÎ=ç~xáşvçŞ_ã®=áÎ9ÙÍ´å¾]Ûİ´éşöÛN[åİÛM´ÛM´ëŞºÛNéşøÛN½ï~½éî÷ïµéî·ë¼ëÎ½ï~øÙÍ´éÎ½ï~øÛİÚÑ­´ÛM´ÛM´ÛM´ÛN¼ëŞ÷ï´İİ´å¾]Ñ­´ÛM´ÛNöë·éşöë´İİ´ë½ë~øÛÎöë·éşöë½Ñ­´ÛM´ÛNöë·éşöë[ÛnøëŞë¶åİ´İİ´ï½éŞ¹Ùî÷ïöë®øëŞë¼Ûm¹çİÛÙİ¹ë´Û<İ­¹áİÚÛwÛm½Ñ­´ÛM´ÛN¼ëŞ÷ïë^ôïN¹éî¸ÛÎöë·éşöë½Ñ­´ÛM´ÛN÷ë^úë_é®÷éşÛÎ<ãŞwççn}åş:ãŞãœÛN¼ëŞ÷ï[ÙİùßMôİ®]ÛİÑ­åş6ç®_ã^çN<ã^6ãxÛMİÛM¶ã®·ï¾5çNá¾xáŞùë½÷ã¾zßé­ûãéî<ïN{ï~üßøëmüëÎµçŞ¹ï®½ï^6í­úïn›ã~ıß]öéŞyç~8ç^|ßŞvëŸå®ºÛmåş6ç®_çÎçm´İİ´ßm÷ßøßmüßmûß½ıß]ùß½ıÑ®_ãnzåşã^wá½´İİ´ßmößõß½ıßİüß]÷ß­üßößûÑ®_ãnzåşã^|ÛMİÛMõÛMÜİÍ´ßõÑ®_ãnzåş6ã^wã´İİ´ßüÑ®_ãnzåş9áî7åşã^tÛMİÛM¼ßÍœÛMûÙÍ´ßMœÛMùÙÍ´ß]œÛM÷ÙÍ´ßmœÛMøÙÍ´ß­½ÛM´ÛM·ÛNôéş÷ëŞøëŞŸéî÷ÛN½éí´ßİë~¼ë^öÛN÷ïºë®½ïÍ´ë^ºï¹ïm´Ûn6ç­õÛmåş6ç®_ã9ã~_áŞ5çM´İİ´ïùïNœë¼ïn¹ï®¹ïn÷ë¸ÛÎ_ãnzåş9áî7åşã^tÛİ½Ñ­Ñ®¸ëºÛNµï­öënúÛÎµëŞ¸ÛİÚÑ­´ÛM´ÛM¶Ûm¶ã~Ÿéîúëöï´ë^úÛNïën¹ïm´ïŸÛN6ç­´ëŞ¸ÛM¼ßmôßm÷ÛN|áşvÛNµéÎ»éşöëŞøëÎÛİÛm¶ÛmÛM´ÛM´ï~ùë®ºëŞüÛMİÛN[Ûm¶åİ´Ù­´ßİÛM´ÛM´ïïM´İİ´ÛÎ_ãnzåşã^|ÛNÜÛN½éîøÛÎµëŞ¸Ûİ½ÛN^ÛN_ãnzåş|áşvÑ­´ÛM´ÛNºéşöÛN½ÛN½éí´ïnµéî»ë¼ßİ½İ­ÛM´ÛM´ÛM´ÛM´ï~ùë®ºëŞüå¾_ãnzåş9áî7åşã^tå¾½åŞ]ÛMİÛN_ãnzåş5áÎtãÎ5ãn9ç[ïïM´Û´åş6ç®_ãn5ç~9åİÛM´ÛM´ÛM´ÛM´ïïM´ÙıŸİİ´åş6ç®_ãn5ç~9Ñ­´ÛM´ÛNöëøïöéí´Ûn6ç­õÛm´Ù½´Ûm¶Ùîšéş½éí¼ï~ùë®ºëŞüÛİÑ­ë¹ë­´ënúßnµï­¼ënúëŞ¸ÛİÚÑ­´ÛM´ÛM¶Ûm¶ã~Ÿéîúëöï´ãnzÛN½ë´ïŸÛNµï­´éîùéŞ¶ëöÙí¶Ûm¶Ñ­´ÛM´ÛN½ë­´éîŸï´ënúëŞ¸Ùî÷ïµïnøï~ûëŞøëÍ¼Ûn6ç­õÛm½ÛNŸïm´éÎ¹éí¼ënúëŞ¸Ûİ´Û]İÛMõßmÚÑ­´ÛM´ÛM´ÛM´ÛNöë^½ï~¹ÛNzë^œï¹ãöïnŸïm¼ë­¶{ß]õçºoyÛN6ç­´{Ÿo½ÚÛNÛënúëŞ¸íİ¶ÛİÛM´ÛM´ïïM´İİ´ßMÛM´ÛM´ë®Ÿïm´ëİ´ëŞÛNöë^ë¾¹ÛÍıÛİÚÑ­´ÛM´ÛM´ÛM´ÛNøéŞôÛMİÛNøéŞôÛMšÛN_ãnzåş6ã^wã´Ù½´åş6ç®_ã^çN<ã^6ãxÙî½éî¸ëüÛÎ¶ï®½ë[ß}´Ù½´åş6ç®_ã9ã~_áŞ5çN[ëŞ]åİ½Ñ­´ÛM´ÛNöëøïöéí´ÛÎøéŞôÛMºÛN_ãnzåşã^wá½½ÛN^ÛN_ãnzåş|áşvÑ

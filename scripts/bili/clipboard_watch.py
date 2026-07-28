@@ -1,87 +1,1 @@
-"""Clipboard watcher: auto-parse bilibili links copied by the user.
-
-Cross-platform clipboard read:
-- Windows: ctypes user32 / PowerShell fallback
-- macOS: pbpaste
-- Linux: xclip / wl-paste
-"""
-import re
-import sys
-import time
-import subprocess
-
-BILI_PATTERN = re.compile(
-    r"(https?://(?:www\.|m\.)?bilibili\.com/\S+|https?://b23\.tv/\w+|"
-    r"BV[0-9A-Za-z]{10}|av\d{1,12}|ep\d{1,9}|ss\d{1,9}|md\d{1,9})", re.I)
-
-
-def read_clipboard():
-    if sys.platform == "win32":
-        return _read_win()
-    if sys.platform == "darwin":
-        return _run(["pbpaste"])
-    for cmd in (["wl-paste", "-n"], ["xclip", "-selection", "clipboard", "-o"]):
-        out = _run(cmd)
-        if out is not None:
-            return out
-    return None
-
-
-def _run(cmd):
-    try:
-        return subprocess.run(cmd, capture_output=True, timeout=5,
-                              text=True, encoding="utf-8", errors="ignore").stdout
-    except Exception:
-        return None
-
-
-def _read_win():
-    try:
-        import ctypes
-        CF_UNICODETEXT = 13
-        user32 = ctypes.windll.user32
-        kernel32 = ctypes.windll.kernel32
-        if not user32.OpenClipboard(0):
-            return None
-        try:
-            h = user32.GetClipboardData(CF_UNICODETEXT)
-            if not h:
-                return None
-            ptr = kernel32.GlobalLock(h)
-            try:
-                return ctypes.wstring_at(ptr)
-            finally:
-                kernel32.GlobalUnlock(h)
-        finally:
-            user32.CloseClipboard()
-    except Exception:
-        return _run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"])
-
-
-def watch(callback, interval=1.0):
-    """Poll clipboard; call callback(match_str) for each new bilibili link."""
-    print("==> ε‰ªθ΄΄ζΏη›‘θ§†ε·²ε―ε¨οΌε¤ε¶ B η«™ι“Ύζ¥ε³θ‡ªε¨θ§£ζδΈ‹θ½½ (Ctrl+C ι€€ε‡Ί)")
-    seen = set()
-    last = read_clipboard() or ""
-    # εΏ½η•¥ε―ε¨ζ—¶ε·²ζ‰ε†…ε®Ή? δΈοΌι¦–ζ¬΅δΉθ§£ζδΈ€ζ¬΅
-    last = ""
-    while True:
-        try:
-            time.sleep(interval)
-            text = read_clipboard() or ""
-            if text == last:
-                continue
-            last = text
-            for m in BILI_PATTERN.finditer(text):
-                key = m.group(0)
-                if key in seen:
-                    continue
-                seen.add(key)
-                print(f"\n==> ζ£€ζµ‹ε°ι“Ύζ¥: {key}")
-                try:
-                    callback(key)
-                except Exception as e:  # noqa
-                    print(f"  ε¤„η†ε¤±θ΄¥: {e}")
-        except KeyboardInterrupt:
-            print("\nε‰ªθ΄΄ζΏη›‘θ§†ε·²εζ­Άγ€‚")
-            return
+Ϋm¶Ϋn7ιΞ½οN¶ιώµοnΈΫNϋλ^ψλ~Όλφέ­΄λ^ωοΩήτλ^φο~ΉΫN¶λήλή¶λήλέ΄ιΞ½ιξ›ο}΄λ~οN½λΈΫN¶οέ΄οΌλ΄οχλφΩνΡ®7οnο~χΩήτιΞµοΊιώφιέ΄λ~λήτλnλ^φλ΄οnΉλ^Έέ­Ωέ΄ηΎ½ιξΈιώϋο}ΪΫN·ούοNΉο}΄οχλφί}φΫMΫNtιώϋλφη~ΌλιΝ΄λ®µιΞλnµλ~›Ρ­ΫNλ^·αώwέ­΄οN¶οNµο~ψλΩέ΄αΞ½ιξωοΝΪΫNόλ~λήτΫMΫNϋιΝοNµο~ψλΫm¶ΫmλήοNοnψΫNφλλήοNοnψΫNχοήχΡ®½ιήτιώφο΄ο½ιήΉΡ®½ιήτιώφο΄ο~ωλnτοnλ~Ήο~χΡ­γn=αΞ=εώtγ^xη9ηnΫMέΫNφλλ~ιήτλήλΌΡ­΄ΫM΄ΫNφΫmΌλΞψοτο}ίέ­ΩύΌέύΪοΎϋοΎ\Ωξάιή\Ων½έώ¶λήλή¶λήλή\Ωξ·ιώΩώ\η}›νΞΌοψοNχέύΪΩύλmφί~\Ωξψο­εΞϋΩΎάΫmΫM΄ΫM΄οm¶γnzε½τΩέύγ]ε®µΩήΪεήΫί]τνήάλ^ϊεΞΈν½υΩΝυίnένΞΉοN\λΫί]ίήένΞχο~\λΫί]ίήένΞλ\λΫί]ίήέΫέ¶ΩΝ΄οnΉΩξ=ΫέΡ­λΉλ­΄οnΉλ^Έεώ·ιΞ½οN¶ιώµοnΈΫΝ½έ­ΫM΄ΫM΄λήΊΫNχοήχΩξτιΞµοΊιώφιέ΄έέέΫM¶οΎ½ινχίm¶έ­ΫM΄ΫM΄ΫM΄ΫM΄οnΉοωοnΫN_οnΉλ^ΈεώϋλήΫΝ½Ρ­΄ΫM΄ΫN½λ­΄ο~ύο}οNλ^ψλ®οnΫMέέέ΄ΫnΈλ^φοΎ½ιν¶έ­ΫM΄ΫM΄ΫM΄ΫM΄οnΉοωοnΫN_οnωινΌε½¶οN¶οNµο~ψλ¶εέ½Ρ­΄ΫM΄ΫNΊιώφΫN·ιήΈΫN½ιν΄ΫΞ[ΫnϋιΝοNµο~ψλ¶ΩΝ΄Ϋmιν¶εέΫN[Ϋnόλ~λήτΫmΫM¶Ωήχλλ·ο½ιώΫmΫM¶λ~λήτλnλ^φλ¶ΩΝ΄Ϋmιύ¶εέ½έ­ΫM΄ΫM΄ΫM΄ΫM΄ιώωο΄έέ΄εώφοΫΞ·ιήΈΫέΫM΄ΫM΄ΫM΄ΫM΄λήΊΫNοψΫN½ο}΄ιξο΄αξιξΉέ­ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οnΉοωοnΫNοψΡ­΄ΫM΄ΫNφλψοφιν΄αξιξΉΡ­Ρ®ΈλΊΫN_οnωινΌλ~λ½έ­ΫM΄ΫM΄οφοέΪΡ­΄ΫM΄ΫM΄ΫM΄ΫNφλψοφιν΄ο~ωλnτοnλ~Ήο~χΩξφοΫΞ·ιήΈΩΝ΄λ~µοNψοφλ_ιώωοτοψέήxοnωλΫNψλήλοψέέωΩΝΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οΉοΞψέήxοnωλΫNΉιξ·ιώΈλήλ½έΫnωοΊΩέόΫmΫNΉοnφιώφο}έΫn½λΎιώφλ¶Ϋέο~ψλοψΡ­΄ΫM΄ΫNΉοΞ·λτο΄γόλ~ΉοNψλήινΪΡ­΄ΫM΄ΫM΄ΫM΄ΫNφλψοφιν΄αξιξΉΡ­Ρ®ΈλΊΫN_οnΉλ^ΈεώϋλήΫΝ½έ­ΫM΄ΫM΄οφοέΪΡ­΄ΫM΄ΫM΄ΫM΄ΫN½ιήτιώφο΄λ~ψοήτλχΡ­΄ΫM΄ΫM΄ΫM΄ΫN7γ®_ηγή7αώ8γxγ|η΄έέ΄ί]χΡ­΄ΫM΄ΫM΄ΫM΄ΫNωο~Ήοmχίm΄έέ΄λ~ψοήτλχΩξϋλήλιΝοχλφί}φΡ­΄ΫM΄ΫM΄ΫM΄ΫN›λφιξΉιΝχίm΄έέ΄λ~ψοήτλχΩξϋλήλιΝιΎΉοnλί}φΡ­΄ΫM΄ΫM΄ΫM΄ΫN½λ­΄ιξο΄οχλφί}φΩξοNΉιξ7ιΞ½οN¶ιώµοnΈΫΝτΫέΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNφλψοφιν΄αξιξΉΡ­΄ΫM΄ΫM΄ΫM΄ΫNψοnύέ­ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λΝ΄έέ΄οχλφί}φΩξ;λψγ~λήτλnλ^φλ8λ^ψλ]Όγ~:εώyαξ=γ~γ9η9ηΞxΫέΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λήΊΫNιώψΫNΌέ­ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οnΉοωοnΫNιώλΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οNψοm΄έέ΄ιΎΉοnλί}φΩξ;ιΞλnµιΞιώ·ι½ΌλΝ½Ρ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNψοnύέ­ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οnΉοωοnΫN·ούοNΉο}οΎχοφλήλΎ_λ^ψΫΞτοφΫέΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λ®½ιξµιΞοέΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫN›λφιξΉιΝχίmγΎιώ¶λ^ηιΞλ~›ΫΞΌΫέΫM΄ΫM΄ΫM΄ΫM΄λ®½ιξµιΞοέΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNωο~Ήοmχίmγ~ιώχλ7ιΞ½οN¶ιώµοnΈΫΝ½Ρ­΄ΫM΄ΫNΉοΞ·λτο΄γόλ~ΉοNψλήινΪΡ­΄ΫM΄ΫM΄ΫM΄ΫNφλψοφιν΄εώφοΫΞ[Ϋnτιώϋλφο~ΌλιΝ¶ΩΝ΄ΫmαξηNφιώΊλήλ¶ΩΝ΄Ϋmγ~ιήλ^λ¶ΩΝ΄Ϋn;λψΩή7ιΞ½οN¶ιώµοnΈΫn]ΫέΡ­λΉλ­΄οΎµο·λΝΌλ~µιΞλnµλ~›ΩΝ΄λήοΉοnϊλ^έέυΩντΫέΪΡ­΄ΫM΄ΫM¶Ϋm¶ηNιΞΫN·ιΞ½οN¶ιώµοnΈέ½΄λ~µιΞΫN·λ^ιΞ¶λ^·ι½Όιήµο·λΞ_ο~ψοm½ΫNΊιώφΫNΉλ^·λΝ΄ιξΉο½΄λn½ιΞ½λn½ιΞ½ΫNλήι½Ϋm¶ΫmΫM΄ΫM΄οNφλήοΌΫmέέέήΫGΉσΦ{Ζψo‡ΊυΦί{Ώ[χWΌkΏ:{–ϋogΉχF{kΗmΟ{–ΈρΧΉσΖϊΫN6ΫG»iΏ}{ίwmηΊρζΉ{owΌσ¶{kΗΌk¶·{―^χGΈoΟ{Ζέmέ΄ΫΞ7οφιΝ›γ}΄{ί4σGΉσ¶ΪΫέ¶ΫέΫM΄ΫM΄ο~ΉλΫMέΫNχλψΫΝ½Ρ­΄ΫM΄ΫNλ^χο΄έέ΄οnΉλ^Έεώ·ιΞ½οN¶ιώµοnΈΫΝ½ΫNοm΄Ϋm¶Ρ­΄ΫM΄ΫM·ΫGΉmφέ{Ώyk—ΉχF{kΗΊχ¶ϊ{–ϋogΊυΟ={:σ—Ήiζύέύ΄{†όρΧmΟ{ΦΊχ§ΊiΖµ{†ύυχΌk¶·{―^χGΈoΟ4{¦k]ΫM΄ΫM΄ιΞµο~ψΫMέΫM¶ΫmΫM΄ΫM΄οΎΌλήλ΄ηφοΉέ­ΫM΄ΫM΄ΫM΄ΫM΄οφοέΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNψλήλο~λΉοMΌλήοΉοnϊλ^ΫέΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οΉοΞψΫMέΫNφλµλ_λ~λήτλnλ^φλΌΫέ΄ιώφΫM¶ΫmΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λήΊΫNψλόο΄έέέΫNλ^χοΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫN·ιώο½ιξωλΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ιΞµο~ψΫMέΫNψλόοΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λ®οm΄ιέ΄λήΫN6γήγή_ηN5ηxγvανλ®½ιξΈλήψλφΫΞψλόο½έ­ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ιΎΉοέ΄έέ΄ιέλΎφιώωοMΌίM½Ρ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫN½λ­΄ιΎΉοέ΄λήΫNχλΉινΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫN·ιώο½ιξωλΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ο~ΉλΩξµλΈΫΞ›λύΫέΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οNφλήοΌλ­¶εΞέέέέν΄{¦·σGΊo{<oG½χvή{―kΪΫNΫιΎΉοήέΫm½Ρ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNψοnύέ­ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λ~µιΞλnµλ~›ΫΞ›λύΫέΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄λόλ~ΉοNψΫN9οΞ·λτο½ιώΫNµο}΄λΪΫM΄Ϋ}΄ιξο^µΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNτοn½ιξψΫΞΊΫm΄ΫGΉk8{Ώtσ§Ήk†υ{ΖψkΪΫNΫλέΫm½Ρ­΄ΫM΄ΫM΄ΫM΄ΫNΉοΞ·λτο΄αΎΉοή¶ιώµοnΈγήοΉοnφοτοΪΡ­΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫNτοn½ιξψΫΝ¶εΞ{=i§Όo†ψ{―]mχ»υΏu{Ζ»σ§Ήo¶φ{5υΗΊiΦ¶{4σm¶ΫέΫM΄ΫM΄ΫM΄ΫM΄ΫM΄ΫM΄οnΉοωοnΡ
