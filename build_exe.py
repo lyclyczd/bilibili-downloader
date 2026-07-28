@@ -9,6 +9,10 @@ import os
 import sys
 import shutil
 import subprocess
+from PyInstaller.utils.win32.versioninfo import (
+    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable,
+    StringStruct, VarFileInfo, VarStruct,
+)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.join(HERE, "scripts")
@@ -17,6 +21,40 @@ DIST = os.path.join(HERE, "build", "exe")
 WORK = os.path.join(HERE, "build", "work")
 ASSETS = os.path.join(HERE, "assets")
 ICON = os.path.join(ASSETS, "icon.ico")
+VERSION_TXT = os.path.join(HERE, "build", "version_info.txt")
+
+
+def make_version_file():
+    """从 bili.utils.VERSION 生成 PyInstaller 版本资源（如 1.0.0 -> 1.0.0.0）。"""
+    sys.path.insert(0, SCRIPTS)
+    from bili.utils import VERSION as app_ver
+    parts = [int(x) for x in app_ver.split(".")]
+    while len(parts) < 4:
+        parts.append(0)
+    vt = tuple(parts[:4])
+    dotted = ".".join(str(x) for x in vt)
+    info = VSVersionInfo(
+        ffi=FixedFileInfo(
+            filevers=vt, prodvers=vt, mask=0x3F, flags=0x0,
+            OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0),
+        ),
+        kids=[
+            StringFileInfo([StringTable(u"040904B0", [
+                StringStruct(u"CompanyName", u""),
+                StringStruct(u"FileDescription", u"BilibiliDownloader"),
+                StringStruct(u"FileVersion", u"{}".format(dotted)),
+                StringStruct(u"InternalName", u"BilibiliDownloader"),
+                StringStruct(u"LegalCopyright", u"\u00a9 BilibiliDownloader"),
+                StringStruct(u"OriginalFilename", u"BilibiliDownloader.exe"),
+                StringStruct(u"ProductName", u"BilibiliDownloader"),
+                StringStruct(u"ProductVersion", u"{}".format(dotted)),
+            ])]),
+            VarFileInfo([VarStruct(u"Translation", [1033, 1200])]),
+        ],
+    )
+    with open(VERSION_TXT, "w", encoding="utf-8") as f:
+        f.write(info.save())
+    print("version file:", VERSION_TXT, "->", app_ver)
 
 
 def make_icon():
@@ -44,6 +82,7 @@ def make_icon():
 def main():
     os.makedirs(DIST, exist_ok=True)
     make_icon()
+    make_version_file()
 
     import imageio_ffmpeg
     import webview
@@ -76,6 +115,7 @@ def main():
         "--noconsole",
         "--icon", ICON,
         "--clean",
+        "--version-file", VERSION_TXT,
         "--distpath", DIST,
         "--workpath", WORK,
         "--log-level", "WARN",

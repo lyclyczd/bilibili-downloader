@@ -49,14 +49,13 @@ GUI 提供的能力（覆盖全部七大需求）：
 
 > 后端 `scripts/bili_gui/` 复用 `bili` 引擎（解析/下载/混流/登录），通过 `download_file`/`process_job` 的进度回调实时上报，CLI 与 GUI 共用同一套下载逻辑。
 
-## 扩展功能清单（GUI，v1.2.0）
+## 扩展功能清单（GUI，v1.0.0）
 
 | # | 功能 | 说明 |
 | --- | --- | --- |
 | ① | 系统通知 + 完成自动打开 | 下载完成弹窗 + 自动打开目录 |
 | ② | 限速 + 代理 | 全局限速 KB/s、HTTP/SOCKS5 代理 |
 | ③ | 任务暂停/恢复/排序 | 断点续传式暂停、恢复、队列排序 |
-| ④ | 自动更新检查 | 比对 GitHub Release 版本 |
 | ⑤ | 多账号切换 | Cookie 多账号管理与一键切换 |
 | ⑥ | UP 主全部投稿分页 | 输入 UID 分页拉取并批量下载 |
 | ⑦ | 浏览器扩展一键捕获 | 见 `extension/README.md` |
@@ -68,10 +67,9 @@ GUI 提供的能力（覆盖全部七大需求）：
 | ⑬ | 「仅个人学习备份」免责声明 | 首次/登录时弹出合规声明 |
 | ⑭ | 一键启动网页脚本 | `launch_web.bat` / `launch_web.sh` |
 | ⑮ | 两种分发模式 | 本地 exe 安装包 / Python+网页 |
-| ⑯ | 开源上传 GitHub | 仓库 `lyclyczd/bilibili-downloader` |
-| ⑰ | 订阅追更（v1.3.0） | 订阅 UP 主投稿或合集，后台每 N 分钟检查更新并自动下载新视频 |
+| ⑰ | 订阅追更（v1.0.0） | 订阅 UP 主投稿或合集，后台每 N 分钟检查更新并自动下载新视频 |
 
-## 订阅追更（⑰，v1.3.0）
+## 订阅追更（⑰，v1.0.0）
 
 GUI「订阅」页粘贴 UP 主空间链接 / UID（订阅全部投稿）或合集链接（`.../lists/{sid}?type=season`）即可追更；默认只追新视频，可勾选同时下载存量。后台按 `sub_interval_min`（默认 30 分钟）自动检查，新视频自动入队 + 系统通知。数据存 `~/.bili_dl/subscriptions.json`。API：`/api/subs`、`/api/subs/add`、`/api/subs/remove`、`/api/subs/toggle`、`/api/subs/check`。
 

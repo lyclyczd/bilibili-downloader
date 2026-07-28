@@ -826,27 +826,7 @@ class GuiCore:
                 LOGGER.warning("订阅轮询异常: %s", e)
             time.sleep(60)
 
-    # ---------- update check (④) ----------
-    def check_update(self):
-        import requests
-        try:
-            r = requests.get(  # 公共 API，不带 B 站 Cookie
-                "https://api.github.com/repos/lyclyczd/bilibili-downloader/releases/latest",
-                timeout=12)
-            if r.status_code == 404:
-                return {"current": VERSION, "latest": VERSION,
-                        "has_update": False, "url": "", "note": "暂无 Release"}
-            d = r.json()
-            latest = (d.get("tag_name") or "").lstrip("v")
-            return {
-                "current": VERSION, "latest": latest,
-                "has_update": bool(latest) and latest != VERSION,
-                "url": d.get("html_url", ""), "note": d.get("body", "")[:300],
-                "assets": [a.get("browser_download_url") for a in d.get("assets", [])],
-            }
-        except Exception as e:  # noqa
-            return {"current": VERSION, "latest": VERSION,
-                    "has_update": False, "url": "", "note": f"检查失败: {e}"}
+    # 自动更新检查已移除（本软件改为纯本地分发，不再依赖 GitHub）
 
     # ---------- logs (⑩) ----------
     def read_logs(self, lines=200):

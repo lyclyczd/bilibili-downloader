@@ -135,8 +135,7 @@ class Handler(BaseHTTPRequestHandler):
             return {"ok": CORE.reorder(body.get("ids") or [])}
         if path in ("/api/task/open", "/api/tasks/open"):
             return {"ok": CORE.open_path(body.get("path"))}
-        if path == "/api/update":
-            return CORE.check_update()
+        # 自动更新检查路由已移除（纯本地软件，不依赖 GitHub）
         if path == "/api/space":
             return CORE.space_videos(body.get("mid"), pn=int(body.get("pn", 1)),
                                       ps=int(body.get("ps", 30)))

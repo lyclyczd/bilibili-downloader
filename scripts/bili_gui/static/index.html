@@ -131,12 +131,6 @@
 </header>
 
 <div class="wrap">
-  <div id="updateBanner" class="banner hidden">
-    <span>🔔 发现新版本 <b id="upVer"></b></span>
-    <a id="upLink" href="#" target="_blank">下载更新</a>
-    <span class="spacer" style="flex:1"></span>
-    <button class="ghost" onclick="$('#updateBanner').classList.add('hidden')">忽略</button>
-  </div>
 
   <div class="tabs">
     <button class="tab active" data-tab="download" onclick="switchTab('download')">下载</button>
@@ -391,12 +385,10 @@
         <span id="setStatus" class="small muted"></span>
       </div>
       <hr style="border-color:var(--line);margin:18px 0">
-      <h3><span class="ic">📦</span>设置迁移（⑪）· 更新（④）</h3>
+      <h3><span class="ic">📦</span>设置迁移（⑪）</h3>
       <div class="row">
         <button class="ghost" onclick="exportSettings()">导出设置</button>
         <button class="ghost" onclick="importSettings()">导入设置</button>
-        <button class="ghost" onclick="checkUpdate()">检查更新</button>
-        <span id="upStatus" class="small muted"></span>
       </div>
       <hr style="border-color:var(--line);margin:18px 0">
       <h3><span class="ic">🧰</span>环境</h3>
@@ -844,12 +836,6 @@ async function importSettings(){
       toast("设置已导入"); }
     catch(e){ toast("导入失败："+e.message); }
   }; inp.click();
-}
-async function checkUpdate(){
-  try{ const d=await api("/api/update");
-    if(d.has_update){ $("#upVer").textContent=d.latest; $("#upLink").href=d.url; $("#updateBanner").classList.remove("hidden"); $("#upStatus").textContent=""; }
-    else{ $("#upStatus").textContent="已是最新 ("+d.current+")"; }
-  }catch(e){ $("#upStatus").textContent="检查失败："+e.message; }
 }
 
 // ---- login / accounts (⑤) ----
