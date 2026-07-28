@@ -49,6 +49,36 @@ GUI 提供的能力（覆盖全部七大需求）：
 
 > 后端 `scripts/bili_gui/` 复用 `bili` 引擎（解析/下载/混流/登录），通过 `download_file`/`process_job` 的进度回调实时上报，CLI 与 GUI 共用同一套下载逻辑。
 
+## 扩展功能清单（GUI，v1.2.0）
+
+| # | 功能 | 说明 |
+| --- | --- | --- |
+| ① | 系统通知 + 完成自动打开 | 下载完成弹窗 + 自动打开目录 |
+| ② | 限速 + 代理 | 全局限速 KB/s、HTTP/SOCKS5 代理 |
+| ③ | 任务暂停/恢复/排序 | 断点续传式暂停、恢复、队列排序 |
+| ④ | 自动更新检查 | 比对 GitHub Release 版本 |
+| ⑤ | 多账号切换 | Cookie 多账号管理与一键切换 |
+| ⑥ | UP 主全部投稿分页 | 输入 UID 分页拉取并批量下载 |
+| ⑦ | 浏览器扩展一键捕获 | 见 `extension/README.md` |
+| ⑧ | 字幕硬烧/裁剪/多 P 合并 | 烧字幕、裁片段、合并为带章节专辑 |
+| ⑨ | AI 字幕生成 | 本地 faster-whisper 识别生成字幕 |
+| ⑩ | 日志查看器 + 暗/亮主题 | 实时查看 gui.log、切换主题 |
+| ⑪ | 设置导入/导出 | 一键备份恢复 GUI 设置 |
+| ⑫ | 默认低速 + 随机间隔风控 | 默认低速≈1.5MB/s、任务间随机间隔；自动三连可开关可限速 |
+| ⑬ | 「仅个人学习备份」免责声明 | 首次/登录时弹出合规声明 |
+| ⑭ | 一键启动网页脚本 | `launch_web.bat` / `launch_web.sh` |
+| ⑮ | 两种分发模式 | 本地 exe 安装包 / Python+网页 |
+| ⑯ | 开源上传 GitHub | 仓库 `lyclyczd/bilibili-downloader` |
+
+## 两种使用模式（⑮）
+
+- **本地 exe 安装包（推荐，双击即用）**：`python build_exe.py` 生成 `build/exe/BilibiliDownloader/`，`python installer.py` 安装；双击 `BilibiliDownloader.exe` 弹出原生窗口，无需浏览器。
+- **Python 代码 + 网页（跨平台）**：`python scripts/bili_gui.py`（或 `launch_web.bat/.sh`）自动打开 `http://127.0.0.1:8234`。
+
+## 免责声明（⑬）
+
+本工具**仅供个人学习与技术研究备份**。下载内容版权归原作者 / 哔哩哔哩，请勿传播、二次分发或商业使用。
+
 ## 快速用法
 
 ### 1. 解析并查看可用画质/音质（不下载）

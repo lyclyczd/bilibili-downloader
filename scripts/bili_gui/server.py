@@ -1,5 +1,6 @@
 """本地 Web 服务：用标准库 http.server 提供 GUI 页面与 JSON API（无额外依赖）。"""
 import os
+import sys
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -7,7 +8,24 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from .core import GuiCore
 
 CORE = GuiCore()
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+
+def _static_dir():
+    """Locate the GUI static dir in dev, one-folder EXE, or one-file EXE."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    meipass = getattr(sys, "_MEIPASS", "")
+    cands = [
+        os.path.join(here, "static"),
+        os.path.join(meipass, "bili_gui", "static"),
+        os.path.join(meipass, "static"),
+    ]
+    for c in cands:
+        if c and os.path.isfile(os.path.join(c, "index.html")):
+            return c
+    return os.path.join(here, "static")
+
+
+STATIC_DIR = _static_dir()
 
 MIME = {
     ".html": "text/html; charset=utf-8",
@@ -109,9 +127,59 @@ class Handler(BaseHTTPRequestHandler):
             return {"ok": CORE.cancel(body.get("id"))}
         if path == "/api/task/retry":
             return {"id": CORE.retry(body.get("id"))}
+        if path == "/api/task/pause":
+            return {"ok": CORE.pause(body.get("id"))}
+        if path == "/api/task/resume":
+            return {"id": CORE.resume(body.get("id"))}
+        if path == "/api/task/reorder":
+            return {"ok": CORE.reorder(body.get("ids") or [])}
         if path == "/api/task/open":
             return {"ok": CORE.open_path(body.get("path"))}
+        if path == "/api/update":
+            return CORE.check_update()
+        if path == "/api/space":
+            return CORE.space_videos(body.get("mid"), pn=int(body.get("pn", 1)),
+                                      ps=int(body.get("ps", 30)))
+        if path == "/api/push":
+            return {"tasks": CORE.push_url(body.get("url", ""))}
+        if path == "/api/logs":
+            return {"lines": CORE.read_logs(int(body.get("lines", 200)))}
+        if path == "/api/accounts":
+            act = body.get("action")
+            if act == "add":
+                return {"ok": CORE.add_account(body.get("name"), body.get("cookie"))}
+            if act == "switch":
+                return {"status": CORE.switch_account(body.get("name"))}
+            if act == "remove":
+                return {"ok": CORE.remove_account(body.get("name"))}
+            return CORE.list_accounts()
+        if path == "/api/settings/export":
+            return CORE.export_settings()
+        if path == "/api/settings/import":
+            return {"ok": bool(CORE.import_settings(body.get("settings")))}
+        if path == "/api/proc/burn":
+            return {"out": CORE.proc_burn(body.get("video"), body.get("sub"),
+                                           body.get("out"), int(body.get("font_size", 24)))}
+        if path == "/api/proc/cut":
+            return {"out": CORE.proc_cut(body.get("video"), body.get("out"),
+                                         body.get("start"), body.get("end") or None)}
+        if path == "/api/proc/merge":
+            return {"out": CORE.proc_merge(body.get("files") or [],
+                                           body.get("out"), body.get("titles"))}
+        if path == "/api/proc/ai_sub":
+            return {"out": CORE.proc_ai_sub(body.get("video"),
+                                            body.get("lang", "zh"),
+                                            body.get("model", "base"))}
         raise ValueError(f"未知接口: {path}")
+
+    def do_OPTIONS(self):
+        # 浏览器扩展跨域推送 (CORS 预检)
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self):
         import urllib.parse

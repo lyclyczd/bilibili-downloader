@@ -6,16 +6,52 @@
 - flv_to_mp4: remux ancient FLV downloads
 """
 import os
+import sys
 import shutil
 import subprocess
 
-FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
+
+def _ffmpeg_candidates():
+    cands = []
+    env = os.environ.get("BILI_FFMPEG")
+    if env:
+        cands.append(env)
+    # PyInstaller one-file extraction dir, or this script's directory
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    if getattr(sys, "frozen", False):
+        cands.append(os.path.join(os.path.dirname(sys.executable), "ffmpeg.exe"))
+    cands.append(os.path.join(base, "ffmpeg.exe"))
+    cands.append(os.path.join(base, "ffmpeg", "ffmpeg.exe"))
+    # imageio-ffmpeg ships a static ffmpeg binary (used for the standalone build)
+    try:
+        import imageio_ffmpeg
+        cands.append(imageio_ffmpeg.get_ffmpeg_exe())
+    except Exception:
+        pass
+    cands.append("ffmpeg")
+    return cands
+
+
+def get_ffmpeg():
+    """Resolve a usable ffmpeg binary (bundled > imageio > PATH)."""
+    for c in _ffmpeg_candidates():
+        try:
+            p = subprocess.run([c, "-version"], stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL, timeout=10)
+            if p.returncode == 0:
+                return c
+        except Exception:
+            continue
+    return "ffmpeg"
+
+
+FFMPEG = get_ffmpeg()
 
 _gpu_cache = None
 
 
 def has_ffmpeg():
-    return shutil.which("ffmpeg") is not None
+    return FFMPEG != "ffmpeg"
 
 
 def _run(args, desc=""):
@@ -127,3 +163,139 @@ def flv_to_mp4(in_path, out_path):
           "-i", in_path, "-c", "copy", "-movflags", "+faststart", out_path],
          "FLV 转 MP4")
     return out_path
+
+
+def burn_subtitle(video_path, sub_path, out_path, sub_type="ass", font_size=24):
+    """把字幕硬烧进画面（⑧）。sub_type: 'ass' | 'srt'。"""
+    if not has_ffmpeg():
+        raise RuntimeError("未检测到 ffmpeg，无法烧录字幕")
+    sub_path = sub_path.replace("\\", "/")
+    force = f"force_style='FontSize={font_size},Alignment=2'"
+    vf = f"subtitles='{sub_path}':{force}"
+    _run([FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+           "-i", video_path, "-vf", vf, "-c:a", "copy", out_path],
+         "字幕硬烧")
+    return out_path
+
+
+def cut(video_path, out_path, start, end=None):
+    """片段截取（⑧）：start/end 形如 '00:01:30' 或秒数。"""
+    if not has_ffmpeg():
+        raise RuntimeError("未检测到 ffmpeg，无法裁剪")
+    args = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+            "-ss", str(start)]
+    if end:
+        args += ["-to", str(end)]
+    args += ["-i", video_path, "-c", "copy", out_path]
+    try:
+        _run(args, "片段截取")
+    except RuntimeError:
+        # 关键帧不整除时 -c copy 可能失败，回退重新编码
+        args = [FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", str(start)]
+        if end:
+            args += ["-to", str(end)]
+        args += ["-i", video_path, "-c:v", "libx264", "-c:a", "aac", out_path]
+        _run(args, "片段截取(重编码)")
+    return out_path
+
+
+def merge_playlist(files, out_path, titles=None):
+    """多 P 合并为单文件（⑧），可选章节标题。"""
+    if not has_ffmpeg():
+        raise RuntimeError("未检测到 ffmpeg，无法合并")
+    if len(files) == 1:
+        import shutil
+        shutil.copy(files[0], out_path)
+        return out_path
+    import tempfile
+    base = os.path.splitext(out_path)[0]
+    lst = base + ".concat.txt"
+    with open(lst, "w", encoding="utf-8") as f:
+        for p in files:
+            f.write(f"file '{p.replace(chr(92), '/')}'\n")
+    try:
+        _run([FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+               "-f", "concat", "-safe", "0", "-i", lst,
+               "-c", "copy", out_path], "多P合并")
+    finally:
+        try:
+            os.remove(lst)
+        except OSError:
+            pass
+    # 注入章节（如提供了标题）
+    if titles and len(titles) == len(files):
+        _inject_chapters(out_path, titles)
+    return out_path
+
+
+def _inject_chapters(mp4_path, titles):
+    """用 metadata 注入简单章节标记。"""
+    import tempfile
+    meta = os.path.splitext(mp4_path)[0] + ".chapters.txt"
+    dur = _probe_duration(mp4_path)
+    if dur <= 0:
+        return
+    seg = dur / len(titles)
+    with open(meta, "w", encoding="utf-8") as f:
+        for i, t in enumerate(titles):
+            f.write(f"[CHAPTER]\nTIMEBASE=1\nSTART={int(i*seg)}\n"
+                    f"END={int((i+1)*seg)}\ntitle={t}\n\n")
+    tmp = mp4_path + ".chaptmp.mp4"
+    try:
+        _run([FFMPEG, "-y", "-hide_banner", "-loglevel", "error",
+               "-i", mp4_path, "-i", meta, "-map_chapters", "1",
+               "-c", "copy", tmp], "注入章节")
+        os.replace(tmp, mp4_path)
+    except Exception:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+    finally:
+        try:
+            os.remove(meta)
+        except OSError:
+            pass
+
+
+def _probe_duration(path):
+    try:
+        out = subprocess.run(
+            [FFMPEG, "-hide_banner", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", "-i", path],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15
+        ).stdout.decode("utf-8", "ignore").strip()
+        return float(out) if out else 0
+    except Exception:
+        return 0
+
+
+def ai_subtitle(in_path, out_dir, lang="zh", model="base"):
+    """AI 字幕生成（⑨，可选功能，需本地 faster-whisper）。
+
+    自动识别语音并生成 out_dir/<name>.srt。未安装依赖时给出明确提示。
+    """
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        raise RuntimeError(
+            "AI 字幕需要 faster-whisper：pip install faster-whisper "
+            "（首次使用会自动下载模型，约 140MB）")
+    if not os.path.isfile(in_path):
+        raise RuntimeError(f"音视频文件不存在: {in_path}")
+    base = os.path.splitext(os.path.basename(in_path))[0]
+    out_srt = os.path.join(out_dir, f"{base}.srt")
+    md = WhisperModel(model, device="auto", compute_type="int8")
+    segs = list(md.transcribe(in_path, language=lang, beam_size=5)[0])
+    _write_srt(segs, out_srt)
+    return out_srt
+
+
+def _write_srt(segments, path):
+    def _t(s):
+        h, r = divmod(int(s), 3600)
+        m, s = divmod(r, 60)
+        return f"{h:02d}:{m:02d}:{s:02d},{int((s % 1) * 1000):03d}"
+    with open(path, "w", encoding="utf-8") as f:
+        for i, seg in enumerate(segs, 1):
+            f.write(f"{i}\n{_t(seg.start)} --> {_t(seg.end)}\n"
+                    f"{seg.text.strip()}\n\n")

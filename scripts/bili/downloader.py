@@ -23,6 +23,56 @@ class DownloadError(Exception):
     pass
 
 
+class DownloadControl:
+    """Pause / cancel control shared between the GUI and worker threads.
+
+    - cancel_event: 设置后任务尽快停止并保留断点（用于「取消」与「暂停」）。
+    - pause_event: 设置后任务挂起（暂停），清除后继续（断点续传）。
+    """
+    def __init__(self):
+        self.cancel_event = threading.Event()
+        self.pause_event = threading.Event()
+
+    def cancel(self):
+        self.cancel_event.set()
+
+    def pause(self):
+        self.pause_event.set()
+
+    def resume(self):
+        self.pause_event.clear()
+
+    def _check(self):
+        """Return 'cancel' / 'pause' / None. Blocks while paused."""
+        if self.cancel_event.is_set():
+            return "cancel"
+        if self.pause_event.is_set():
+            while self.pause_event.is_set() and not self.cancel_event.is_set():
+                time.sleep(0.25)
+            return "cancel" if self.cancel_event.is_set() else "resume"
+        return None
+
+
+class _RateLimiter:
+    """Global bytes/sec throttle shared across download chunks (限速)."""
+    def __init__(self, bps):
+        self.bps = bps or 0
+        self.lock = threading.Lock()
+        self.t0 = time.time()
+        self.sent = 0
+
+    def throttle(self, n):
+        if self.bps <= 0:
+            return
+        with self.lock:
+            self.sent += n
+            elapsed = time.time() - self.t0
+            delay = self.sent / self.bps - elapsed
+            delay = max(0.0, min(delay, 1.0))
+        if delay > 0:
+            time.sleep(delay)
+
+
 class _Progress:
     def __init__(self, total, done=0, label="", sink=None):
         self.total = total
@@ -85,11 +135,13 @@ def _probe(session, urls, headers):
 
 
 def download_file(session, urls, dest, threads=8, retries=3, label=None,
-                  extra_headers=None, progress=None):
+                  extra_headers=None, progress=None, control=None,
+                  rate_limit=0):
     """Download urls[0..] to dest with resume support. Returns dest.
 
     progress: optional sink object with .update(done, total, label, speed, eta).
-    CLI ignores it; GUI uses it for live progress bars.
+    control:  DownloadControl (暂停/取消).
+    rate_limit: bytes/sec (限速), 0 = 不限速。
     """
     if isinstance(urls, str):
         urls = [urls]
@@ -123,7 +175,8 @@ def download_file(session, urls, dest, threads=8, retries=3, label=None,
             meta = None
 
     if not ranged or total <= 4 * 1024 * 1024:
-        _download_single(session, urls, part, total, headers, retries, label, sink=progress)
+        _download_single(session, urls, part, total, headers, retries, label,
+                         sink=progress, control=control, rate_limit=rate_limit)
     else:
         n = max(1, min(threads, 8))
         if meta:
@@ -141,7 +194,9 @@ def download_file(session, urls, dest, threads=8, retries=3, label=None,
         if done0:
             print(f"  断点续传: 已完成 {format_size(done0)} / {format_size(total)}")
         prog = _Progress(total, done0, label, sink=progress)
-        _download_chunks(session, urls, part, chunks, headers, retries, prog, meta_path)
+        limiter = _RateLimiter(rate_limit)
+        _download_chunks(session, urls, part, chunks, headers, retries, prog,
+                         meta_path, control=control, limiter=limiter)
         prog.print_line(force=True)
         print()
 
@@ -151,8 +206,10 @@ def download_file(session, urls, dest, threads=8, retries=3, label=None,
     return dest
 
 
-def _download_single(session, urls, part, total, headers, retries, label, sink=None):
+def _download_single(session, urls, part, total, headers, retries, label,
+                    sink=None, control=None, rate_limit=0):
     prog = _Progress(total or 0, 0, label, sink=sink)
+    limiter = _RateLimiter(rate_limit)
     err = None
     for attempt in range(retries + 1):
         for url in urls:
@@ -161,8 +218,11 @@ def _download_single(session, urls, part, total, headers, retries, label, sink=N
                     r.raise_for_status()
                     with open(part, "wb") as f:
                         for blk in r.iter_content(CHUNK_READ):
+                            if control and control._check() == "cancel":
+                                return
                             f.write(blk)
                             prog.add(len(blk))
+                            limiter.throttle(len(blk))
                             prog.print_line()
                 prog.print_line(force=True)
                 print()
@@ -175,7 +235,9 @@ def _download_single(session, urls, part, total, headers, retries, label, sink=N
     raise DownloadError(f"下载失败: {err}")
 
 
-def _download_chunks(session, urls, part, chunks, headers, retries, prog, meta_path):
+def _download_chunks(session, urls, part, chunks, headers, retries, prog,
+                     meta_path, control=None, limiter=None):
+    limiter = limiter or _RateLimiter(0)
     stop = threading.Event()
     errors = []
     meta_lock = threading.Lock()
@@ -202,19 +264,24 @@ def _download_chunks(session, urls, part, chunks, headers, retries, prog, meta_p
                         with open(part, "r+b") as f:
                             f.seek(pos)
                             for blk in r.iter_content(CHUNK_READ):
-                                if stop.is_set():
+                                chk = control._check() if control else None
+                                if chk == "cancel":
+                                    save_meta()
                                     return
                                 f.write(blk)
                                 n = len(blk)
                                 pos += n
                                 c["done"] += n
                                 prog.add(n)
+                                limiter.throttle(n)
                                 prog.print_line()
                     if pos > c["end"]:
                         save_meta()
                         return
                 except Exception:  # noqa
                     save_meta()
+            if stop.is_set():
+                return
             time.sleep(min(2 ** attempt, 8))
         errors.append(DownloadError(f"分块 {idx} 多次重试后仍失败"))
         stop.set()

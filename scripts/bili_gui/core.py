@@ -19,10 +19,11 @@ if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 from bili import api, auth, parser, extras, muxer  # noqa
-from bili.downloader import download_file, record_stream  # noqa
+from bili.downloader import download_file, record_stream, DownloadControl  # noqa
 from bili.taskqueue import TaskQueue  # noqa
 from bili.utils import (sanitize_filename, format_size, add_history, load_json,
-                        save_json, HISTORY_FILE, av2bv, ensure_app_dir, APP_DIR)  # noqa
+                        save_json, HISTORY_FILE, av2bv, ensure_app_dir, APP_DIR,
+                        risk_interval, LOG_FILE, VERSION)  # noqa
 import bili_dl  # noqa
 from bili.clipboard_watch import read_clipboard, BILI_PATTERN  # noqa
 
@@ -118,11 +119,13 @@ class Store:
 class GuiCore:
     def __init__(self):
         self.store = Store()
+        self.settings = self._load_settings()
         self.session = auth.build_session()
+        self._apply_proxy()
         self.plans = {}
         self._clip = {"on": False, "thread": None}
         self._qr = {"status": "none", "msg": "", "key": None, "session": None}
-        self.settings = self._load_settings()
+        self._controls = {}  # task_id -> DownloadControl
 
     # ---------- settings ----------
     def _load_settings(self):
@@ -146,6 +149,13 @@ class GuiCore:
             "numbering": True,
             "with_extras": False,
             "open_folder": True,
+            "notify": True,          # ① 系统通知
+            "proxy": "",              # ② 代理 "http://u:p@h:p" 或 "socks5://.."
+            "rate_limit": 0,         # ② 限速 KB/s (0=不限)
+            "theme": "dark",         # ⑩ 暗/亮
+            "low_speed_mode": True,   # ⑫ 风控：默认低速+随机间隔
+            "disclaimer_accepted": False,  # ⑬ 免责声明
+            "launch_browser": True,
         }
         s = load_json(os.path.join(APP_DIR, "gui_settings.json"), {}) or {}
         defaults.update(s)
@@ -162,7 +172,41 @@ class GuiCore:
                 clean[k] = v
         self.settings.update(clean)
         save_json(os.path.join(APP_DIR, "gui_settings.json"), self.settings)
+        # 代理/主题等需即时生效
+        if "proxy" in clean:
+            self._apply_proxy()
         return self.settings
+
+    # ---------- proxy (②) ----------
+    def _proxy_dict(self):
+        p = (self.settings.get("proxy") or "").strip()
+        if not p:
+            return {}
+        return {"http": p, "https": p}
+
+    def _apply_proxy(self):
+        self.session.proxies = self._proxy_dict()
+
+    # ---------- system notification (①) ----------
+    def notify(self, title, msg):
+        if not self.settings.get("notify"):
+            return
+        try:
+            from . import notifier
+            notifier.toast(title, msg)
+        except Exception as e:  # noqa
+            log.warning("notify failed: %s", e)
+
+    def _on_done(self, task, path):
+        """下载完成：写历史 + 通知 + 自动打开（①）。"""
+        try:
+            add_history({"title": task.title, "type": task.kind,
+                         "path": path})
+        except Exception:
+            pass
+        self.notify("下载完成", f"{task.title}\n{os.path.basename(path)}")
+        if self.settings.get("open_folder"):
+            self.open_path(path)
 
     # ---------- meta / status ----------
     def meta(self):
@@ -316,21 +360,41 @@ class GuiCore:
             sel = jobs
         if not sel:
             raise ValueError("未选择任何任务")
+        rl = int(self.settings.get("rate_limit") or 0)
+        if self.settings.get("low_speed_mode") and rl == 0:
+            rl = 1500  # ⑫ 默认低速 ~1.5MB/s
+        rate_limit = rl * 1024
         q = TaskQueue(workers=args.workers or 3, retries=2)
         tasks = []
         for job in sel:
             t = self.store.new_task(job.title, job.type)
             prog = TaskProgress(t)
-            q.add(job.title, self._run_job, self.session, job, args, prog)
+            ctrl = DownloadControl()
+            self._controls[t.id] = ctrl
+            q.add(job.title, self._run_job, self.session, job, args,
+                  prog, ctrl, rate_limit)
             tasks.append(t)
         threading.Thread(target=self._run_queue, args=(q,), daemon=True).start()
         return {"queued": len(sel), "tasks": [t.id for t in tasks]}
 
-    def _run_job(self, session, job, args, prog):
+    def _calc_rate(self):
+        rl = int(self.settings.get("rate_limit") or 0)
+        if self.settings.get("low_speed_mode") and rl == 0:
+            rl = 1500
+        return rl * 1024
+
+    def _run_job(self, session, job, args, prog, control=None,
+                 rate_limit=0):
         prog.task._job = job
         prog.task._args = args
+        prog.task._control = control
         try:
-            bili_dl.process_job(session, job, args, prog)
+            if self.settings.get("low_speed_mode"):
+                time.sleep(risk_interval())  # ⑫ 任务间随机间隔降风控
+            path = bili_dl.process_job(
+                session, job, args, prog, control=control,
+                rate_limit=rate_limit)
+            self._on_done(prog.task, path)
         except Exception as e:  # noqa
             prog.error(f"{type(e).__name__}: {e}")
             raise
@@ -339,7 +403,7 @@ class GuiCore:
         q.run()
 
     def quick_download(self, url):
-        """Used by clipboard watcher: resolve + submit all with defaults."""
+        """Used by clipboard watcher / browser extension: resolve + submit all."""
         try:
             res = parser.parse(url, self.session)
             if res.kind == "live":
@@ -348,10 +412,14 @@ class GuiCore:
             jobs, _ = bili_dl.resolve_jobs(self.session, res, args)
             q = TaskQueue(workers=self.settings["workers"] or 3, retries=2)
             tasks = []
+            rate_limit = self._calc_rate()
             for job in jobs:
                 t = self.store.new_task(job.title, job.type)
                 prog = TaskProgress(t)
-                q.add(job.title, self._run_job, self.session, job, args, prog)
+                ctrl = DownloadControl()
+                self._controls[t.id] = ctrl
+                q.add(job.title, self._run_job, self.session, job, args,
+                      prog, ctrl, rate_limit)
                 tasks.append(t)
             threading.Thread(target=self._run_queue, args=(q,), daemon=True).start()
             return [t.id for t in tasks]
@@ -408,11 +476,56 @@ class GuiCore:
 
     def cancel(self, tid):
         t = self.store.get(tid)
-        if t and t.status in ("queued", "running"):
+        if t and t.status in ("queued", "running", "paused"):
             t.status = "canceled"
             t.phase = "已取消"
+            ctrl = getattr(t, "_control", None)
+            if ctrl:
+                ctrl.cancel()
+            self._controls.pop(tid, None)
             return True
         return False
+
+    def pause(self, tid):
+        """③ 暂停：挂起进行中的下载（保留断点，可恢复）。"""
+        t = self.store.get(tid)
+        if not t or t.status != "running":
+            return False
+        ctrl = getattr(t, "_control", None)
+        if ctrl:
+            ctrl.pause()
+        t.status = "paused"
+        t.phase = "已暂停"
+        return True
+
+    def resume(self, tid):
+        """③ 恢复：从断点继续下载。"""
+        t = self.store.get(tid)
+        if not t or t.status != "paused" or not getattr(t, "_job", None):
+            return None
+        self._controls.pop(tid, None)
+        nt = self.store.new_task(t.title, t.kind)
+        nt._job = t._job
+        nt._args = t._args
+        ctrl = DownloadControl()
+        self._controls[nt.id] = ctrl
+        q = TaskQueue(workers=1, retries=2)
+        q.add(t.title, self._run_job, self.session, t._job, t._args,
+               TaskProgress(nt), ctrl, self._calc_rate())
+        threading.Thread(target=self._run_queue, args=(q,), daemon=True).start()
+        return nt.id
+
+    def reorder(self, ids):
+        """③ 按给定 id 顺序重排任务列表（置顶/上下移）。"""
+        with self.store.lock:
+            by_id = {t.id: t for t in self.store.tasks.values()}
+            ordered = [by_id[i] for i in ids if i in by_id]
+            # 保留未列出的（理论上不丢）
+            for t in self.store.tasks.values():
+                if t not in ordered:
+                    ordered.append(t)
+            self.store.tasks = {t.id: t for t in ordered}
+        return True
 
     def retry(self, tid):
         t = self.store.get(tid)
@@ -424,7 +537,10 @@ class GuiCore:
         nt._job = t._job
         nt._args = t._args
         q = TaskQueue(workers=1, retries=2)
-        q.add(t.title, self._run_job, self.session, t._job, t._args, TaskProgress(nt))
+        ctrl = DownloadControl()
+        self._controls[nt.id] = ctrl
+        q.add(t.title, self._run_job, self.session, t._job, t._args,
+               TaskProgress(nt), ctrl, self._calc_rate())
         threading.Thread(target=self._run_queue, args=(q,), daemon=True).start()
         return nt.id
 
@@ -507,10 +623,108 @@ class GuiCore:
                 "qr_status": self._qr.get("status", "none"),
                 "qr_msg": self._qr.get("msg", "")}
 
-    def import_cookie(self, cookie_str):
-        auth.import_cookie(cookie_str)
+    def import_cookie(self, cookie_str, name=None):
+        auth.import_cookie(cookie_str, name=name)
         self.session = auth.build_session()
+        self._apply_proxy()
         return self.login_status()
+
+    # ---------- multi-account (⑤) ----------
+    def list_accounts(self):
+        return {"active": auth.get_active(), "accounts": auth.list_accounts()}
+
+    def switch_account(self, name):
+        auth.switch_account(name)
+        self.session = auth.build_session(account=name)
+        self._apply_proxy()
+        return self.login_status()
+
+    def add_account(self, name, cookie_str):
+        auth.add_account(name, cookie_str)
+        return self.login_status()
+
+    def remove_account(self, name):
+        return auth.remove_account(name)
+
+    # ---------- UP主全部投稿分页 (⑥) ----------
+    def space_videos(self, mid, pn=1, ps=30):
+        data = api.get_space_videos(self.session, mid, pn=pn, ps=ps)
+        vlist = data.get("list", {}).get("vlist", [])
+        videos = [{
+            "bvid": v.get("bvid"), "aid": v.get("aid"),
+            "title": v.get("title"), "cid": None,
+            "cover": v.get("pic"),
+            "play": v.get("play"), "date": v.get("created"),
+        } for v in vlist]
+        total = data.get("page", {}).get("count", 0)
+        return {
+            "videos": videos, "total": total, "page": pn, "ps": ps,
+            "has_more": pn * ps < total,
+        }
+
+    # ---------- extension push (⑦) ----------
+    def push_url(self, url):
+        return self.quick_download(url)
+
+    # ---------- update check (④) ----------
+    def check_update(self):
+        import requests
+        try:
+            r = requests.get(  # 公共 API，不带 B 站 Cookie
+                "https://api.github.com/repos/lyclyczd/bilibili-downloader/releases/latest",
+                timeout=12)
+            if r.status_code == 404:
+                return {"current": VERSION, "latest": VERSION,
+                        "has_update": False, "url": "", "note": "暂无 Release"}
+            d = r.json()
+            latest = (d.get("tag_name") or "").lstrip("v")
+            return {
+                "current": VERSION, "latest": latest,
+                "has_update": bool(latest) and latest != VERSION,
+                "url": d.get("html_url", ""), "note": d.get("body", "")[:300],
+                "assets": [a.get("browser_download_url") for a in d.get("assets", [])],
+            }
+        except Exception as e:  # noqa
+            return {"current": VERSION, "latest": VERSION,
+                    "has_update": False, "url": "", "note": f"检查失败: {e}"}
+
+    # ---------- logs (⑩) ----------
+    def read_logs(self, lines=200):
+        try:
+            if not os.path.exists(LOG_FILE):
+                return []
+            with open(LOG_FILE, "r", encoding="utf-8", errors="ignore") as f:
+                data = f.read().splitlines()
+            return data[-lines:]
+        except Exception:
+            return []
+
+    # ---------- settings import / export (⑪) ----------
+    def export_settings(self):
+        return self.settings
+
+    def import_settings(self, data):
+        if isinstance(data, dict):
+            self.save_settings(data or {})
+        return self.settings
+
+    # ---------- 后期加工 (⑧⑨) ----------
+    def proc_burn(self, video, sub, out, font_size=24):
+        return muxer.burn_subtitle(video, sub, out, font_size=font_size)
+
+    def proc_cut(self, video, out, start, end):
+        return muxer.cut(video, out, start, end)
+
+    def proc_merge(self, files, out, titles):
+        fl = [f for f in (files or []) if os.path.isfile(f)]
+        if not fl:
+            raise ValueError("未提供有效视频文件")
+        tt = titles if isinstance(titles, list) else None
+        return muxer.merge_playlist(fl, out, titles=tt)
+
+    def proc_ai_sub(self, video, lang="zh", model="base"):
+        out_dir = self.settings.get("output") or os.getcwd()
+        return muxer.ai_subtitle(video, out_dir, lang=lang, model=model)
 
     # ---------- mylist / history ----------
     def mylist(self, kind):

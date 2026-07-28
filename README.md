@@ -113,18 +113,89 @@ python scripts/bili_dl.py watch -o ./downloads      # 监视剪贴板
 
 ---
 
+---
+
+## 🪟 两种使用模式
+
+| 模式 | 适用 | 启动方式 |
+| --- | --- | --- |
+| **本地 exe 安装包**（推荐，双击即用） | Windows 用户，不想碰命令行 | 双击 `BilibiliDownloader.exe` 弹出原生窗口（WebView2），无需打开浏览器 |
+| **Python 代码 + 网页** | 开发者 / macOS / Linux | `python scripts/bili_gui.py` 自动开浏览器 `http://127.0.0.1:8234` |
+
+### 模式一：本地 exe 安装包
+
+```bash
+python build_exe.py     # 生成 build/exe/BilibiliDownloader/（单目录便携版）
+python installer.py     # 安装向导：复制 exe + 创建桌面/开始菜单快捷方式
+```
+- `build_exe.py`：用 PyInstaller 把 GUI 打包成原生窗口程序，内置 ffmpeg、WebUI、WebView2 运行时。
+- `installer.py`：tkinter 安装向导，可选同时生成便携版 `BilibiliDownloader_portable.zip`。
+- 生成的 exe 直接双击运行，**不依赖浏览器**，下载完成弹系统通知并自动打开文件所在目录。
+
+### 模式二：Python 代码 + 网页（跨平台）
+
+```bash
+# 一键启动脚本（已附带）
+launch_web.bat        # Windows 双击
+launch_web.sh          # macOS / Linux 执行
+# 或手动：
+python scripts/bili_gui.py
+```
+
+---
+
+## 🧩 扩展功能（GUI 专属，v1.2.0）
+
+| # | 功能 | 说明 |
+| --- | --- | --- |
+| ① | 系统通知 + 完成自动打开 | 下载完成弹窗提示（win10toast / MessageBox），并自动打开文件目录 |
+| ② | 限速 + 代理 | 设置全局限速（KB/s）与 HTTP/SOCKS5 代理 |
+| ③ | 任务暂停/恢复/排序 | 队列中可暂停、断点恢复、上下移 / 置顶排序 |
+| ④ | 自动更新检查 | 设置页一键比对 GitHub Release 版本 |
+| ⑤ | 多账号切换 | Cookie 多账号管理，一键切换活跃账号 |
+| ⑥ | UP 主全部投稿分页 | 输入 UID 分页拉取全部投稿并批量下载 |
+| ⑦ | 浏览器扩展一键捕获 | 安装 `extension/`，在视频页点扩展图标即推送下载 |
+| ⑧ | 字幕硬烧 / 裁剪 / 多 P 合并 | 把字幕烧进画面、裁剪片段、多 P 合并为带章节的专辑 |
+| ⑨ | AI 字幕生成 | 本地 faster-whisper 语音识别生成字幕（首次自动下载模型） |
+| ⑩ | 日志查看器 + 暗/亮主题 | 设置页实时查看 `gui.log`，一键切换主题 |
+| ⑪ | 设置导入/导出 | 一键备份 / 恢复全部 GUI 设置（JSON） |
+| ⑫ | 默认低速 + 随机间隔风控 | 默认开启低速模式（≈1.5MB/s）与任务间随机间隔，降低被风控概率；自动三连改为可开关、可限速 |
+| ⑬ | 「仅个人学习备份」免责声明 | 登录/首次使用时弹出，明确合规边界 |
+| ⑭ | 一键启动网页脚本 | 附带 `launch_web.bat` / `launch_web.sh` |
+| ⑮ | 两种分发模式 | 本地 exe 安装包 / Python + 网页，见上 |
+| ⑯ | 开源上传 GitHub | 仓库 `lyclyczd/bilibili-downloader` |
+
+### 浏览器扩展（⑦）
+
+见 `extension/README.md`：开发者模式加载 `extension/` 目录，打开哔哩哔哩页面 → 点扩展图标 → “捕获当前页面并下载”。
+
+---
+
+## ⚠️ 免责声明（⑬）
+
+本工具**仅供个人学习与技术研究备份使用**。下载内容的版权归原作者 / 哔哩哔哩所有，
+请勿传播、二次分发或用于任何商业用途。使用本工具即代表你已阅读并同意上述条款。
+
+---
+
 ## 📁 项目结构
 
 ```
 bilibili-downloader/
 ├── SKILL.md                  # 技能元信息（供 WorkBuddy / Agent 调用）
+├── README.md
 ├── requirements.txt
+├── build_exe.py             # ⑮ PyInstaller 打包原生窗口 exe
+├── installer.py             # ⑮ tkinter 安装向导（含便携 zip）
+├── launch_web.bat / .sh    # ⑭ 一键启动网页版
+├── extension/               # ⑦ 浏览器扩展（一键捕获）
 ├── references/               # API 字段、qn / 音质编号对照
 └── scripts/
     ├── bili_dl.py            # CLI 主程序
-    ├── bili_gui.py           # GUI 启动器
+    ├── bili_gui.py           # GUI 网页版启动器
+    ├── bili_gui_app.py       # 原生窗口(exe)启动器
     ├── bili/                 # 下载引擎（parser/wbi/api/auth/downloader/extras/muxer/taskqueue/...）
-    └── bili_gui/             # GUI 后端（core/server）+ 前端（static/index.html）
+    └── bili_gui/             # GUI 后端（core/server/notifier）+ 前端（static/index.html）
 ```
 
 ---

@@ -1,2 +1,15 @@
+# 基础（CLI 必需）
 requests>=2.28
 qrcode>=7.4
+
+# 图形界面（网页版 / 原生窗口 exe）
+pywebview>=6.0
+imageio-ffmpeg>=0.5
+
+# 打包成 exe 安装包（⑮）
+pyinstaller>=6.0
+pythonnet>=3.0          # Windows 原生窗口后端（WebView2 / clr）
+
+# 可选增强（未安装时自动回退，不影响主流程）
+# win10toast>=0.2      # Windows 原生 toast 通知（未安装则回退 MessageBox）
+# faster-whisper>=1.0   # AI 字幕生成（⑨，首次使用自动下载模型 ~140MB）

@@ -7,8 +7,15 @@ import random
 
 APP_DIR = os.path.join(os.path.expanduser("~"), ".bili_dl")
 COOKIE_FILE = os.path.join(APP_DIR, "cookies.json")
+ACCOUNTS_FILE = os.path.join(APP_DIR, "accounts.json")
 HISTORY_FILE = os.path.join(APP_DIR, "history.json")
 WBI_CACHE_FILE = os.path.join(APP_DIR, "wbi_cache.json")
+LOG_DIR = os.path.join(APP_DIR, "logs")
+LOG_FILE = os.path.join(LOG_DIR, "gui.log")
+VERSION_FILE = os.path.join(APP_DIR, "VERSION")
+
+# 软件版本（用于自动更新检查）。推送 GitHub 后请同步此处与 Release 的 tag。
+VERSION = "1.2.0"
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -19,7 +26,13 @@ USER_AGENTS = [
 
 def ensure_app_dir():
     os.makedirs(APP_DIR, exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
     return APP_DIR
+
+
+def risk_interval(base=2.0, jitter=4.0):
+    """降低风控：在 base~base+jitter 秒间随机间隔（任务之间调用）。"""
+    return base + random.uniform(0, jitter)
 
 
 def pick_ua():

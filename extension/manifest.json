@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "BiliDL 一键捕获",
+  "version": "1.0.0",
+  "description": "把当前哔哩哔哩页面链接一键推送到本地 BiliDL 下载器（exe 或 python 网页版）。",
+  "permissions": ["activeTab", "tabs", "scripting"],
+  "host_permissions": [
+    "http://127.0.0.1:8234/*",
+    "http://localhost:8234/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "BiliDL 一键捕获"
+  }
+}

@@ -235,7 +235,7 @@ def resolve_jobs(session, res, args):
 # process one job: playurl -> download -> mux -> extras
 # ======================================================================
 
-def process_job(session, job, args, progress=None):
+def process_job(session, job, args, progress=None, control=None, rate_limit=0):
     os.makedirs(job.out_dir, exist_ok=True)
     prefix = f"{job.index:03d}_" if args.numbering else ""
     base = prefix + sanitize_filename(job.title)
@@ -290,12 +290,14 @@ def process_job(session, job, args, progress=None):
             if progress:
                 progress.set_phase("下载视频流")
             download_file(session, api.stream_urls(video), tmp_v,
-                          threads=args.threads, label="视频流", progress=progress)
+                          threads=args.threads, label="视频流", progress=progress,
+                          control=control, rate_limit=rate_limit)
         if audio:
             if progress:
                 progress.set_phase("下载音频流")
             download_file(session, api.stream_urls(audio), tmp_a,
-                          threads=args.threads, label="音频流", progress=progress)
+                          threads=args.threads, label="音频流", progress=progress,
+                          control=control, rate_limit=rate_limit)
 
         if args.audio_only:
             if progress:
@@ -340,7 +342,8 @@ def process_job(session, job, args, progress=None):
                 progress.set_phase(f"下载FLV段{i}/{len(durl)}")
             seg = os.path.join(job.out_dir, f"{base}.seg{i}.flv")
             download_file(session, [d["url"]] + (d.get("backup_url") or []),
-                          seg, threads=args.threads, label=f"FLV段{i}", progress=progress)
+                          seg, threads=args.threads, label=f"FLV段{i}",
+                          progress=progress, control=control, rate_limit=rate_limit)
             seg_files.append(seg)
         flv_out = os.path.join(job.out_dir, f"{base}.flv")
         if len(seg_files) == 1:

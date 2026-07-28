@@ -32,7 +32,6 @@
   label{color:var(--muted);font-size:12px;display:block;margin-bottom:4px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .wrap{max-width:1280px;margin:0 auto;padding:16px}
-  /* header */
   header{display:flex;align-items:center;gap:14px;padding:14px 16px;
     background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
   .logo{font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px}
@@ -41,7 +40,7 @@
   .pill{font-size:12px;padding:5px 10px;border-radius:20px;background:var(--bg3);color:var(--muted);display:flex;align-items:center;gap:6px}
   .pill .led{width:8px;height:8px;border-radius:50%;background:var(--muted)}
   .pill.on .led{background:var(--ok)} .pill.vip .led{background:var(--brand)}
-  .tabs{display:flex;gap:6px;margin:14px 0}
+  .tabs{display:flex;gap:6px;margin:14px 0;flex-wrap:wrap}
   .tab{padding:8px 16px;border-radius:20px;background:var(--bg2);color:var(--muted);font-weight:600}
   .tab.active{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff}
   .grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start}
@@ -50,7 +49,6 @@
     padding:16px;box-shadow:var(--shadow)}
   .card h3{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
   .card h3 .ic{color:var(--brand)}
-  /* url bar */
   .urlbar{display:flex;gap:10px;margin-bottom:12px}
   .urlbar input{flex:1}
   .preview{display:flex;gap:14px;margin-top:12px}
@@ -65,14 +63,12 @@
   .page:last-child{border-bottom:none}
   .page input{width:auto}
   .page .pt{color:var(--muted);font-size:12px;min-width:42px}
-  /* options */
   .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
   .opts .full{grid-column:1/-1}
   .checks{display:flex;gap:14px;flex-wrap:wrap}
   .checks label{display:flex;align-items:center;gap:6px;color:var(--text);font-size:13px;margin:0}
   .checks input{width:auto}
   details summary{cursor:pointer;color:var(--brand2);font-size:13px;margin:10px 0 4px;user-select:none}
-  /* tasks */
   .task{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg2)}
   .task .th{display:flex;align-items:center;gap:10px}
   .task .tt{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -81,13 +77,14 @@
   .tag.running{background:rgba(35,173,229,.18);color:var(--brand2)}
   .tag.done{background:rgba(54,211,153,.18);color:var(--ok)}
   .tag.failed{background:rgba(248,114,114,.18);color:var(--err)}
+  .tag.paused{background:rgba(123,92,255,.18);color:var(--accent)}
   .tag.canceled{background:var(--bg3);color:var(--muted)}
   .bar{height:8px;border-radius:6px;background:var(--bg3);overflow:hidden;margin:8px 0 4px}
   .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));width:0;transition:width .4s}
   .bar>i.done{background:var(--ok)} .bar>i.failed{background:var(--err)}
   .tin{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
-  .tactions{display:flex;gap:8px;margin-top:8px}
-  .tactions button{padding:5px 10px;font-size:12px}
+  .actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .actions button{padding:5px 10px;font-size:12px}
   .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:13px}
   .list-item{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid var(--line)}
   .list-item:last-child{border-bottom:none}
@@ -100,7 +97,7 @@
   .muted{color:var(--muted)}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg3);
     color:var(--text);padding:10px 18px;border-radius:10px;box-shadow:var(--shadow);border:1px solid var(--line);
-    opacity:0;transition:.25s;z-index:50;font-size:13px}
+    opacity:0;transition:.25s;z-index:50;font-size:13px;max-width:80%}
   .toast.show{opacity:1}
   .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .seg button{border-radius:0;background:var(--bg2);flex:1}
@@ -108,6 +105,21 @@
   .hidden{display:none!important}
   .small{font-size:12px}
   a{color:var(--brand2)}
+  pre.log{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px;
+    max-height:60vh;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-all}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:60}
+  .modal .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;max-width:480px;box-shadow:var(--shadow)}
+  .modal h2{margin:0 0 10px;font-size:17px}
+  .modal p{color:var(--muted);font-size:13px}
+  .acc{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px}
+  .acc .a-name{flex:1;font-weight:600}
+  .acc .a-tag{font-size:11px;color:var(--ok)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:760px){.opts,.grid2,.grid3{grid-template-columns:1fr}}
+  .banner{background:linear-gradient(135deg,rgba(251,114,153,.15),rgba(35,173,229,.15));
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;display:flex;gap:10px;align-items:center}
+  .banner a{font-weight:600}
 </style>
 </head>
 <body>
@@ -115,36 +127,42 @@
   <div class="logo"><span class="dot"></span>BiliDL</div>
   <div id="statusPill" class="pill"><span class="led"></span><span id="statusText">未登录（游客）</span></div>
   <div class="spacer"></div>
-  <button class="ghost" onclick="switchTab('mylist')">我的列表</button>
-  <button class="ghost" onclick="switchTab('history')">历史</button>
-  <button class="ghost" onclick="switchTab('settings')">设置</button>
-  <button class="ghost" onclick="switchTab('login')">登录</button>
-  <button class="ghost" onclick="toggleTheme()" title="切换主题">🌓</button>
+  <button class="ghost" onclick="toggleTheme()" title="切换主题">🌗</button>
 </header>
 
 <div class="wrap">
+  <div id="updateBanner" class="banner hidden">
+    <span>🔔 发现新版本 <b id="upVer"></b></span>
+    <a id="upLink" href="#" target="_blank">下载更新</a>
+    <span class="spacer" style="flex:1"></span>
+    <button class="ghost" onclick="$('#updateBanner').classList.add('hidden')">忽略</button>
+  </div>
+
   <div class="tabs">
     <button class="tab active" data-tab="download" onclick="switchTab('download')">下载</button>
     <button class="tab" data-tab="mylist" onclick="switchTab('mylist')">我的列表</button>
-    <button class="tab" data-tab="history" onclick="switchTab('history')">历史记录</button>
+    <button class="tab" data-tab="process" onclick="switchTab('process')">后期加工</button>
+    <button class="tab" data-tab="logs" onclick="switchTab('logs')">运行日志</button>
+    <button class="tab" data-tab="history" onclick="switchTab('history')">历史</button>
     <button class="tab" data-tab="settings" onclick="switchTab('settings')">设置</button>
     <button class="tab" data-tab="login" onclick="switchTab('login')">登录</button>
   </div>
 
-  <!-- ============ DOWNLOAD ============ -->
+  <!-- ========= DOWNLOAD ========= -->
   <div id="tab-download" class="tabpane">
     <div class="grid">
       <div>
         <div class="card">
           <h3><span class="ic">🔗</span>解析链接</h3>
           <div class="urlbar">
-            <input id="url" placeholder="粘贴 BV号 / av号 / 视频·番剧·课程·直播链接 / fav:收藏夹ID / 直播间号" onkeydown="if(event.key==='Enter')resolve()">
+            <input id="url" placeholder="粘贴 BV号 / av号 / 视频·番剧·课程·直播链接 / fav:收藏夹ID / 直播间号 / space:UP主UID" onkeydown="if(event.key==='Enter')resolve()">
             <button class="primary" onclick="resolve()">解析</button>
           </div>
           <div class="row">
             <label class="checks"><input type="checkbox" id="clipToggle" onchange="toggleClip(this.checked)"> 剪贴板自动监视</label>
             <span id="clipState" class="small muted"></span>
           </div>
+          <p class="small muted">💡 浏览器装「BiliDL 捕获」扩展后，点扩展按钮即可把当前页推送到这里（见登录页说明）。</p>
           <div id="previewBox"></div>
         </div>
 
@@ -226,7 +244,7 @@
     </div>
   </div>
 
-  <!-- ============ MYLIST ============ -->
+  <!-- ========= MYLIST ========= -->
   <div id="tab-mylist" class="tabpane hidden">
     <div class="card">
       <h3><span class="ic">📚</span>我的列表（需登录）</h3>
@@ -240,9 +258,74 @@
       </div>
       <div id="mylistBox"><div class="empty">点击刷新加载</div></div>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3><span class="ic">👤</span>UP 主全部投稿（⑥）</h3>
+      <div class="row" style="margin-bottom:12px">
+        <input id="upMid" placeholder="UP 主 UID，例如 672328094" style="max-width:260px">
+        <button class="primary" onclick="loadUpVideos(1)">加载</button>
+        <button class="ghost" id="upPrev" onclick="upPage(-1)" disabled>上一页</button>
+        <button class="ghost" id="upNext" onclick="upPage(1)" disabled>下一页</button>
+        <span id="upInfo" class="small muted"></span>
+      </div>
+      <div id="upBox"><div class="empty">输入 UID 后加载投稿列表</div></div>
+    </div>
   </div>
 
-  <!-- ============ HISTORY ============ -->
+  <!-- ========= PROCESS ========= -->
+  <div id="tab-process" class="tabpane hidden">
+    <div class="grid">
+      <div class="card">
+        <h3><span class="ic">🎬</span>字幕硬烧 / 片段截取（⑧）</h3>
+        <div class="opts">
+          <div class="full"><label>视频文件</label><input id="pVideo" placeholder="D:/x/xxx.mp4"></div>
+          <div class="full"><label>字幕文件（srt / ass，硬烧用）</label><input id="pSub" placeholder="D:/x/xxx.ass"></div>
+          <div><label>字号</label><input type="number" id="pFont" value="24" min="8" max="80"></div>
+          <div><label>输出</label><input id="pBurnOut" placeholder="D:/x/out.mp4"></div>
+          <div><label>截取起点</label><input id="pStart" placeholder="00:01:30 或秒"></div>
+          <div><label>截取终点</label><input id="pEnd" placeholder="00:03:00（留空到结尾）"></div>
+          <div class="full"><label>截取输出</label><input id="pCutOut" placeholder="D:/x/clip.mp4"></div>
+        </div>
+        <div style="margin-top:14px" class="row">
+          <button class="primary" onclick="procBurn()">🔥 字幕硬烧</button>
+          <button class="ghost" onclick="procCut()">✂️ 片段截取</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><span class="ic">🧩</span>多 P 合并 / AI 字幕（⑧⑨）</h3>
+        <div class="full"><label>合并文件列表（每行一个完整路径）</label>
+          <textarea id="pMerge" rows="5" placeholder="D:/x/01.mp4&#10;D:/x/02.mp4"></textarea>
+        </div>
+        <div class="full"><label>章节标题（可选，每行对应一个文件）</label>
+          <textarea id="pTitles" rows="3" placeholder="第一集&#10;第二集"></textarea>
+        </div>
+        <div><label>合并输出</label><input id="pMergeOut" placeholder="D:/x/album.mp4"></div>
+        <div style="margin-top:14px"><button class="primary" onclick="procMerge()">📎 合并为专辑</button></div>
+        <hr style="border-color:var(--line);margin:16px 0">
+        <div class="full"><label>AI 字幕：音视频文件</label><input id="pAiVideo" placeholder="D:/x/xxx.mp4"></div>
+        <div class="grid2">
+          <div><label>语言</label><input id="pAiLang" value="zh"></div>
+          <div><label>模型</label><select id="pAiModel"><option value="base">base</option><option value="small">small</option><option value="medium">medium</option></select></div>
+        </div>
+        <div style="margin-top:12px" class="small muted">需先安装依赖：<code>pip install faster-whisper</code>（首次约 140MB）</div>
+        <div style="margin-top:10px"><button class="primary" onclick="procAiSub()">🤖 生成 AI 字幕</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= LOGS ========= -->
+  <div id="tab-logs" class="tabpane hidden">
+    <div class="card">
+      <h3><span class="ic">📜</span>运行日志（⑩）
+        <span class="spacer" style="flex:1"></span>
+        <button class="ghost" style="padding:4px 10px;font-size:12px" onclick="loadLogs()">刷新</button>
+      </h3>
+      <pre class="log" id="logBox">点击刷新加载…</pre>
+    </div>
+  </div>
+
+  <!-- ========= HISTORY ========= -->
   <div id="tab-history" class="tabpane hidden">
     <div class="card">
       <h3><span class="ic">🕘</span>本地下载记录</h3>
@@ -250,7 +333,7 @@
     </div>
   </div>
 
-  <!-- ============ SETTINGS ============ -->
+  <!-- ========= SETTINGS ========= -->
   <div id="tab-settings" class="tabpane hidden">
     <div class="card">
       <h3><span class="ic">🛠️</span>默认设置</h3>
@@ -260,10 +343,15 @@
         <div><label>默认音质（留空=最高）</label><select id="setAudio"></select></div>
         <div><label>默认线程数</label><input type="number" id="setThreads" min="1" max="8"></div>
         <div><label>默认并行任务数</label><input type="number" id="setWorkers" min="1" max="6"></div>
+        <div><label>限速（KB/s，0=不限）</label><input type="number" id="setRate" min="0" value="0"></div>
+        <div><label>代理地址</label><input id="setProxy" placeholder="http://127.0.0.1:7890 或 socks5://..."></div>
         <div class="full"><div class="checks">
           <label><input type="checkbox" id="setCover"> 默认下载封面</label>
           <label><input type="checkbox" id="setNumbering"> 默认加序号</label>
           <label><input type="checkbox" id="setGpu"> 默认 GPU 加速</label>
+          <label><input type="checkbox" id="setNotify"> ① 下载完成系统通知</label>
+          <label><input type="checkbox" id="setOpen"> ① 完成后打开文件夹</label>
+          <label><input type="checkbox" id="setLowSpeed" checked> ⑫ 风控低速模式（随机间隔+默认限速）</label>
         </div></div>
       </div>
       <div style="margin-top:14px" class="row">
@@ -271,12 +359,20 @@
         <span id="setStatus" class="small muted"></span>
       </div>
       <hr style="border-color:var(--line);margin:18px 0">
+      <h3><span class="ic">📦</span>设置迁移（⑪）· 更新（④）</h3>
+      <div class="row">
+        <button class="ghost" onclick="exportSettings()">导出设置</button>
+        <button class="ghost" onclick="importSettings()">导入设置</button>
+        <button class="ghost" onclick="checkUpdate()">检查更新</button>
+        <span id="upStatus" class="small muted"></span>
+      </div>
+      <hr style="border-color:var(--line);margin:18px 0">
       <h3><span class="ic">🧰</span>环境</h3>
       <div id="envBox" class="small muted"></div>
     </div>
   </div>
 
-  <!-- ============ LOGIN ============ -->
+  <!-- ========= LOGIN ========= -->
   <div id="tab-login" class="tabpane hidden">
     <div class="grid">
       <div class="card">
@@ -294,6 +390,36 @@
         <div style="margin-top:10px"><button class="primary" onclick="importCookie()">导入并登录</button></div>
       </div>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3><span class="ic">👥</span>多账号（⑤）</h3>
+      <div id="accBox"><div class="empty">暂无账号</div></div>
+      <div class="grid3" style="margin-top:12px">
+        <div><label>账号名</label><input id="accName" placeholder="例如 大会员小号"></div>
+        <div class="full" style="grid-column:auto"><label>Cookie</label><input id="accCookie" placeholder="SESSDATA=..."></div>
+        <div style="display:flex;align-items:flex-end"><button class="primary" onclick="addAccount()">添加账号</button></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3><span class="ic">🧩</span>浏览器扩展一键捕获（⑦）</h3>
+      <p class="small muted">在浏览器装「BiliDL 捕获」扩展（见 <code>extension/</code> 文件夹，加载为未打包扩展），点击工具栏按钮即把当前页 B 站链接推送到本程序的下载队列。</p>
+      <ol class="small muted">
+        <li>打开 <code>chrome://extensions</code> → 开启「开发者模式」→ 「加载已解压的扩展程序」→ 选择 <code>extension/</code> 目录。</li>
+        <li>确保本程序已启动（默认 http://127.0.0.1:8234），点扩展图标即推送当前标签页网址。</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- disclaimer modal (⑬) -->
+<div id="disclaimer" class="modal hidden">
+  <div class="box">
+    <h2>⚠️ 免责声明</h2>
+    <p>本工具仅用于<b>个人学习与技术研究备份</b>，下载内容版权归原作者所有。请勿用于任何商业用途或侵犯他人合法权益的行为。继续使用即表示你已阅读并同意以上条款。</p>
+    <div class="row" style="margin-top:14px;justify-content:flex-end">
+      <button class="primary" onclick="acceptDisclaimer()">我已阅读并同意</button>
+    </div>
   </div>
 </div>
 
@@ -302,7 +428,7 @@
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
-let state = { plan:null, selected:new Set(), settings:{}, meta:{}, clipOn:false, mlKind:"favs", mode:"full" };
+let state = { plan:null, selected:new Set(), settings:{}, meta:{}, clipOn:false, mlKind:"favs", mode:"full", upPage:1, upMid:"", lastTasks:[] };
 
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
 async function api(path, method="GET", body){
@@ -323,7 +449,8 @@ function switchTab(name){
   if(name==="mylist") loadMylist();
   if(name==="history") loadHistory();
   if(name==="settings") loadEnv();
-  if(name==="login") getQR();
+  if(name==="login") { getQR(); loadAccounts(); }
+  if(name==="logs") loadLogs();
 }
 function toggleTheme(){ const r=document.documentElement; r.dataset.theme = r.dataset.theme==="dark"?"light":"dark"; }
 
@@ -339,9 +466,14 @@ function fillSettings(){
   $("#setOutput").value=s.output||"";
   $("#setThreads").value=s.threads||8;
   $("#setWorkers").value=s.workers||3;
+  $("#setRate").value=s.rate_limit||0;
+  $("#setProxy").value=s.proxy||"";
   $("#setCover").checked=!!s.cover;
   $("#setNumbering").checked=!!s.numbering;
   $("#setGpu").checked=!!s.gpu;
+  $("#setNotify").checked=!!s.notify;
+  $("#setOpen").checked=!!s.open_folder;
+  $("#setLowSpeed").checked=!!s.low_speed_mode;
 }
 function fillOptionDefaults(){
   const s=state.settings;
@@ -397,7 +529,6 @@ function renderPlan(plan){
         <p class="sub">可选画质 ${plan.qualities.length} 档，音质 ${plan.audios.length} 档</p>
       </div>
     </div>${pagesHtml}`;
-  // fill quality/audio selects from plan, fallback meta
   const qlist = plan.qualities.length?plan.qualities:state.meta.qualities.map(q=>({qn:q.qn,label:q.label,need_vip:false}));
   const alist = plan.audios.length?plan.audios:state.meta.audios.map(a=>({id:a.id,label:a.label}));
   fillQualitySelect($("#optQuality"), qlist, true);
@@ -452,13 +583,11 @@ async function startRecord(){
   catch(e){ toast("录制失败："+e.message); }
 }
 
-// ---- tasks ----
+// ---- tasks (③ pause/resume/reorder) ----
 let polling=false;
 async function pollTasks(){
-  try{
-    const d=await api("/api/tasks");
-    renderTasks(d.tasks||[]);
-  }catch(e){}
+  try{ const d=await api("/api/tasks"); state.lastTasks=d.tasks||[]; renderTasks(state.lastTasks); }
+  catch(e){}
 }
 function renderTasks(tasks){
   const box=$("#tasks");
@@ -468,7 +597,10 @@ function renderTasks(tasks){
     const barCls = t.status==="done"?"done":(t.status==="failed"?"failed":"");
     const pct=t.progress||0;
     const actions=[];
-    if(t.status==="queued"||t.status==="running") actions.push(`<button onclick="cancelTask('${t.id}')">取消</button>`);
+    if(t.status==="queued"||t.status==="running") actions.push(`<button onclick="pauseTask('${t.id}')">暂停</button>`);
+    if(t.status==="paused") actions.push(`<button class="primary" onclick="resumeTask('${t.id}')">恢复</button>`);
+    if(t.status==="queued"||t.status==="running"||t.status==="paused") actions.push(`<button onclick="moveTask('${t.id}',-1)">↑</button>`);
+    if(t.status==="queued"||t.status==="running"||t.status==="paused") actions.push(`<button onclick="moveTask('${t.id}',1)">↓</button>`);
     if(t.status==="failed") actions.push(`<button onclick="retryTask('${t.id}')">重试</button>`);
     if(t.result_path) actions.push(`<button onclick="openTask('${encodeURIComponent(t.result_path)}')">打开</button>`);
     return `<div class="task">
@@ -476,14 +608,23 @@ function renderTasks(tasks){
       <div class="bar"><i class="${barCls}" style="width:${pct}%"></i></div>
       <div class="tin"><span>${escapeHtml(t.phase||"")}</span><span>${pct.toFixed(1)}% · ${fmtSize(t.speed)}/s · ETA ${fmtEta(t.eta)}</span></div>
       ${t.error?`<div class="tin" style="color:var(--err)">${escapeHtml(t.error)}</div>`:""}
-      <div class="tactions">${actions.join("")}</div>
+      <div class="actions">${actions.join("")}</div>
     </div>`;
   }).join("");
 }
-function statusText(s){ return {queued:"排队中",running:"下载中",done:"完成",failed:"失败",canceled:"已取消"}[s]||s; }
-async function cancelTask(id){ await api("/api/task/cancel","POST",{id}); pollTasks(); }
-async function retryTask(id){ const d=await api("/api/task/retry","POST",{id}); if(d.id) toast("已重试"); pollTasks(); }
-async function openTask(p){ await api("/api/task/open","POST",{path:decodeURIComponent(p)}); }
+function statusText(s){ return {queued:"排队中",running:"下载中",done:"完成",failed:"失败",paused:"已暂停",canceled:"已取消"}[s]||s; }
+async function pauseTask(id){ await api("/api/tasks/pause","POST",{id}); pollTasks(); }
+async function resumeTask(id){ const d=await api("/api/tasks/resume","POST",{id}); if(d.id) toast("已恢复"); pollTasks(); }
+async function cancelTask(id){ await api("/api/tasks/cancel","POST",{id}); pollTasks(); }
+async function retryTask(id){ const d=await api("/api/tasks/retry","POST",{id}); if(d.id) toast("已重试"); pollTasks(); }
+async function moveTask(id, dir){
+  const ids=state.lastTasks.map(t=>t.id);
+  const i=ids.indexOf(id); const j=i+dir;
+  if(j<0||j>=ids.length) return;
+  [ids[i],ids[j]]=[ids[j],ids[i]];
+  await api("/api/tasks/reorder","POST",{ids}); pollTasks();
+}
+async function openTask(p){ await api("/api/tasks/open","POST",{path:decodeURIComponent(p)}); }
 async function clearTasks(){ await api("/api/tasks/clear","POST",{}); pollTasks(); }
 
 // ---- clipboard ----
@@ -492,10 +633,9 @@ async function toggleClip(on){
     $("#clipState").textContent = d.on?"监视中…复制 B 站链接自动下载":"";
   }catch(e){ toast("剪贴板："+e.message); }
 }
-async function loadClipState(){ try{ const d=await api("/api/clipboard/state"); state.clipOn=d.on; $("#clipToggle").checked=d.on; $("#clipState").textContent=d.on?"监视中…":"";
-  }catch(e){} }
+async function loadClipState(){ try{ const d=await api("/api/clipboard/state"); state.clipOn=d.on; $("#clipToggle").checked=d.on; $("#clipState").textContent=d.on?"监视中…":""; }catch(e){} }
 
-// ---- mylist ----
+// ---- mylist ---- 
 function setMlKind(k){ state.mlKind=k; $$("#mlSeg button").forEach(b=>b.classList.toggle("active", b.dataset.kind===k)); loadMylist(); }
 async function loadMylist(){
   try{
@@ -511,6 +651,59 @@ async function loadMylist(){
 }
 function useRef(ref){ $("#url").value=ref; switchTab("download"); resolve(); }
 
+// ---- UP 主投稿 (⑥) ----
+async function loadUpVideos(pg){
+  const mid=$("#upMid").value.trim();
+  if(!mid){ toast("请输入 UP 主 UID"); return; }
+  state.upMid=mid; state.upPage=pg;
+  try{
+    const d=await api("/api/space?mid="+encodeURIComponent(mid)+"&pn="+pg+"&ps=30");
+    const items=d.videos||[];
+    $("#upInfo").textContent=`共 ${d.total} 个 · 第 ${d.page} 页`;
+    $("#upPrev").disabled = pg<=1;
+    $("#upNext").disabled = !d.has_more;
+    if(!items.length){ $("#upBox").innerHTML='<div class="empty">该 UP 无投稿或需登录</div>'; return; }
+    $("#upBox").innerHTML=items.map(v=>{
+      const ref = v.bvid?`${v.bvid}`:`av${v.aid}`;
+      return `<div class="list-item"><div class="li-title">${escapeHtml(v.title)}<div class="li-sub">${v.bvid||("av"+v.aid)}${v.date?" · "+v.date:""}</div></div>
+        <button class="primary" onclick="useRef('${ref}')">下载</button></div>`;
+    }).join("");
+  }catch(e){ $("#upBox").innerHTML=`<div class="empty">加载失败：${escapeHtml(e.message)}</div>`; }
+}
+function upPage(d){ loadUpVideos(state.upPage+d); }
+
+// ---- 后期加工 (⑧⑨) ----
+async function procBurn(){
+  const v=$("#pVideo").value.trim(), s=$("#pSub").value.trim(), o=$("#pBurnOut").value.trim();
+  if(!v||!s||!o){ toast("请填视频/字幕/输出"); return; }
+  try{ const d=await api("/api/proc/burn","POST",{video:v,sub:s,out:o,font_size:Number($("#pFont").value)||24}); toast("字幕硬烧完成: "+d.out); }
+  catch(e){ toast("失败："+e.message); }
+}
+async function procCut(){
+  const v=$("#pVideo").value.trim(), o=$("#pCutOut").value.trim(), st=$("#pStart").value.trim();
+  if(!v||!o||!st){ toast("请填视频/起点/输出"); return; }
+  try{ const d=await api("/api/proc/cut","POST",{video:v,out:o,start:st,end:$("#pEnd").value.trim()||null}); toast("截取完成: "+d.out); }
+  catch(e){ toast("失败："+e.message); }
+}
+async function procMerge(){
+  const files=$("#pMerge").value.split("\n").map(x=>x.trim()).filter(Boolean);
+  const o=$("#pMergeOut").value.trim();
+  if(!files.length||!o){ toast("请填文件列表/输出"); return; }
+  const titles=$("#pTitles").value.split("\n").map(x=>x.trim()).filter(Boolean);
+  try{ const d=await api("/api/proc/merge","POST",{files,out:o,titles}); toast("合并完成: "+d.out); }
+  catch(e){ toast("失败："+e.message); }
+}
+async function procAiSub(){
+  const v=$("#pAiVideo").value.trim();
+  if(!v){ toast("请填音视频文件"); return; }
+  toast("AI 字幕生成中（可能较久）…");
+  try{ const d=await api("/api/proc/ai_sub","POST",{video:v,lang:$("#pAiLang").value||"zh",model:$("#pAiModel").value||"base"}); toast("AI 字幕: "+d.out); }
+  catch(e){ toast("失败："+e.message); }
+}
+
+// ---- logs (⑩) ----
+async function loadLogs(){ try{ const d=await api("/api/logs?lines=300"); $("#logBox").textContent=(d.lines||[]).join("\n")||"（空）"; }catch(e){ $("#logBox").textContent="加载失败: "+e.message; } }
+
 // ---- history ----
 async function loadHistory(){
   try{ const d=await api("/api/history?limit=100"); const items=d.items||[];
@@ -525,24 +718,67 @@ async function loadHistory(){
 async function saveSettings(){
   const patch={
     output:$("#setOutput").value.trim(), threads:Number($("#setThreads").value)||8,
-    workers:Number($("#setWorkers").value)||3, cover:$("#setCover").checked,
+    workers:Number($("#setWorkers").value)||3, rate_limit:Number($("#setRate").value)||0,
+    proxy:$("#setProxy").value.trim(), cover:$("#setCover").checked,
     numbering:$("#setNumbering").checked, gpu:$("#setGpu").checked,
+    notify:$("#setNotify").checked, open_folder:$("#setOpen").checked,
+    low_speed_mode:$("#setLowSpeed").checked,
   };
   try{ await api("/api/settings/save","POST",patch); state.settings=await api("/api/settings");
     fillOptionDefaults(); $("#setStatus").textContent="已保存 ✓"; setTimeout(()=>$("#setStatus").textContent="",2000);
   }catch(e){ $("#setStatus").textContent="保存失败："+e.message; }
 }
+async function exportSettings(){
+  try{ const s=await api("/api/settings/export");
+    const blob=new Blob([JSON.stringify(s,null,2)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="bilidl-settings.json"; a.click(); toast("设置已导出"); }
+  catch(e){ toast("导出失败："+e.message); }
+async function importSettings(){
+  const inp=document.createElement("input"); inp.type="file"; inp.accept="application/json";
+  inp.onchange=async ()=>{
+    try{ const txt=await inp.files[0].text(); const d=JSON.parse(txt);
+      await api("/api/settings/import","POST",{settings:d});
+      state.settings=await api("/api/settings"); fillSettings(); fillOptionDefaults();
+      toast("设置已导入"); }
+    catch(e){ toast("导入失败："+e.message); }
+  }; inp.click();
+}
+async function checkUpdate(){
+  try{ const d=await api("/api/update");
+    if(d.has_update){ $("#upVer").textContent=d.latest; $("#upLink").href=d.url; $("#updateBanner").classList.remove("hidden"); $("#upStatus").textContent=""; }
+    else{ $("#upStatus").textContent="已是最新 ("+d.current+")"; }
+  }catch(e){ $("#upStatus").textContent="检查失败："+e.message; }
+}
 
-// ---- login ----
+// ---- login / accounts (⑤) ----
 async function getQR(){ try{ const d=await api("/api/login/qr","POST"); $("#qrBox").innerHTML=`<img class="qr" src="data:image/png;base64,${d.qr}">`; $("#qrMsg").textContent="请使用哔哩哔哩 App 扫码…"; pollLogin(); }catch(e){ $("#qrMsg").textContent="获取失败："+e.message; } }
 async function pollLogin(){
   const d=await api("/api/login/status"); $("#qrMsg").textContent=d.qr_msg||"";
   if(d.qr_status==="success"){ await loadStatus(); $("#qrMsg").textContent="✅ 登录成功！"; }
   else if(d.qr_status==="waiting"||d.qr_status==="scanned"){ setTimeout(pollLogin, 2000); }
-  else if(d.qr_status==="expired"||d.qr_status==="timeout"){ /* stop */ }
 }
 async function importCookie(){ const c=$("#cookieStr").value.trim(); if(!c){ toast("请输入 Cookie"); return; }
-  try{ const d=await api("/api/login/cookie","POST",{cookie:c}); await loadStatus(); toast(d.logged_in?("登录成功："+d.uname):"Cookie 无效"); }catch(e){ toast("导入失败："+e.message); } }
+  try{ const d=await api("/api/login/cookie","POST",{cookie:c}); await loadStatus(); toast(d.logged_in?("登录成功："+d.uname):"Cookie 无效"); }
+  catch(e){ toast("导入失败："+e.message); }
+}
+async function loadAccounts(){
+  try{ const d=await api("/api/accounts");
+    const accs=d.accounts||[];
+    if(!accs.length){ $("#accBox").innerHTML='<div class="empty">暂无账号，导入 Cookie 即自动创建</div>'; return; }
+    $("#accBox").innerHTML=accs.map(a=>`<div class="acc"><span class="a-name">${escapeHtml(a.name)}${a.uname?" ("+escapeHtml(a.uname)+")":""}</span>${a.active?'<span class="a-tag">● 当前</span>':`<button class="ghost" onclick="switchAccount('${escapeHtml(a.name)}')">切换</button>`}<button class="ghost" onclick="removeAccount('${escapeHtml(a.name)}')">删除</button></div>`).join("");
+  }catch(e){ $("#accBox").innerHTML='<div class="empty">加载失败</div>'; }
+}
+async function addAccount(){ const n=$("#accName").value.trim(), c=$("#accCookie").value.trim();
+  if(!n||!c){ toast("请填账号名与 Cookie"); return; }
+  try{ await api("/api/accounts","POST",{action:"add",name:n,cookie:c}); $("#accName").value=""; $("#accCookie").value=""; await loadAccounts(); await loadStatus(); toast("账号已添加"); }
+  catch(e){ toast("失败："+e.message); }
+}
+async function switchAccount(n){ try{ await api("/api/accounts","POST",{action:"switch",name:n}); await loadAccounts(); await loadStatus(); toast("已切换："+n); }catch(e){ toast("失败："+e.message); } }
+async function removeAccount(n){ try{ await api("/api/accounts","POST",{action:"remove",name:n}); await loadAccounts(); toast("已删除："+n); }catch(e){ toast("失败："+e.message); } }
+
+// ---- disclaimer (⑬) ----
+async function acceptDisclaimer(){ try{ await api("/api/settings/save","POST",{disclaimer_accepted:true}); }catch(e){} $("#disclaimer").classList.add("hidden"); }
 
 // ---- utils ----
 function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -553,6 +789,7 @@ function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":
   await loadSettings().catch(()=>{});
   await loadStatus().catch(()=>{});
   await loadClipState().catch(()=>{});
+  if(!state.settings.disclaimer_accepted){ $("#disclaimer").classList.remove("hidden"); }
   setInterval(pollTasks, 1500);
   pollTasks();
 })();
